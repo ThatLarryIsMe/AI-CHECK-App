@@ -2,15 +2,12 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-
 const HISTORY_KEY = "proofmode_history";
-
 type HistoryEntry = {
   packId: string;
   snippet: string;
   ts: number;
 };
-
 function loadHistory(): HistoryEntry[] {
   if (typeof window === "undefined") return [];
   try {
@@ -19,7 +16,6 @@ function loadHistory(): HistoryEntry[] {
     return [];
   }
 }
-
 function saveToHistory(packId: string, snippet: string) {
   const prev = loadHistory();
   const updated: HistoryEntry[] = [
@@ -28,18 +24,15 @@ function saveToHistory(packId: string, snippet: string) {
   ].slice(0, 10);
   localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
 }
-
 export default function VerifyPage() {
   const router = useRouter();
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
-
   useEffect(() => {
     setHistory(loadHistory());
   }, []);
-
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
@@ -55,9 +48,20 @@ export default function VerifyPage() {
         throw new Error(data.error ?? `Server error ${response.status} — please try again.`);
       }
       const data = (await response.json()) as { jobId: string };
-      saveToHistory(data.jobId, text);
+      // Poll once to resolve packId before saving history
+      let packId = data.jobId;
+      try {
+        const jobRes = await fetch(`/api/jobs/${data.jobId}`);
+        if (jobRes.ok) {
+          const jobData = (await jobRes.json()) as { status: string; packId?: string };
+          if (jobData.packId) packId = jobData.packId;
+        }
+      } catch {
+        // fall back to jobId if poll fails
+      }
+      saveToHistory(packId, text);
       setHistory(loadHistory());
-      router.push(`/jobs/${data.jobId}`);
+      router.push(`/packs/${packId}`);
     } catch (submitError) {
       setError(
         submitError instanceof Error
@@ -68,12 +72,10 @@ export default function VerifyPage() {
       setLoading(false);
     }
   }
-
   return (
     <main className="mx-auto flex min-h-screen max-w-4xl flex-col px-6 py-12 text-slate-100">
       <h1 className="text-3xl font-semibold text-cyan-300 mb-2">Verify text</h1>
       <p className="text-slate-400 text-sm mb-6">Paste any text — each claim will be classified and scored.</p>
-
       <div className="flex gap-8">
         {/* Main form */}
         <section className="flex-1">
@@ -98,7 +100,6 @@ export default function VerifyPage() {
               )}
             </div>
           </form>
-
           {/* G1.3 — Error UX */}
           {error ? (
             <div className="mt-4 rounded-lg border border-red-700 bg-red-950/40 p-4">
@@ -113,7 +114,6 @@ export default function VerifyPage() {
             </div>
           ) : null}
         </section>
-
         {/* G1.1 — History sidebar */}
         {history.length > 0 && (
           <aside className="w-64 shrink-0">
@@ -122,7 +122,7 @@ export default function VerifyPage() {
               {history.map((entry) => (
                 <li key={entry.packId}>
                   <Link
-                    href={`/jobs/${entry.packId}`}
+                    href={`/packs/${entry.packId}`}
                     className="block rounded-lg bg-slate-800 px-3 py-2 hover:bg-slate-700 transition"
                   >
                     <p className="text-xs text-slate-400">{new Date(entry.ts).toLocaleString()}</p>
