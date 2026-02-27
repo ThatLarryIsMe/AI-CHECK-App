@@ -1,55 +1,45 @@
-import {
-  EvidencePackSchema,
-  type Claim,
-  type Evidence,
-  type EvidencePack
-} from "@proofmode/core";
+import { EvidencePackSchema, type EvidencePack } from "@proofmode/core";
+import { extractClaims } from "./claim-extractor";
+import { classifyClaim } from "./classifier";
 
-const CLAIM_STATUSES: Claim["status"][] = ["supported", "mixed", "unsupported"];
+const ENGINE_VERSION = process.env.ENGINE_VERSION ?? "1.0.0-lite";
 
-function splitIntoClaims(text: string): string[] {
-  const pieces = text
-    .split(/[.!?]\s+/)
-    .map((piece) => piece.trim())
-    .filter(Boolean);
+export async function runVerification(
+    text: string,
+    jobId: string
+  ): Promise<EvidencePack> {
+    const packId = crypto.randomUUID();
 
-  if (pieces.length === 0) {
-    return [
-      "No concrete claim provided in input.",
-      "Insufficient detail for strong verification."
-    ];
-  }
+  // Step 1: Extract atomic claims from input text
+  const claimTexts = await extractClaims(text);
 
-  return pieces.slice(0, 3);
-}
+  // Step 2: Classify each claim (conservative, LLM-only)
+  const classifiedClaims = await Promise.all(
+        claimTexts.map(async (claimText) => {
+        const result = await classifyClaim(claimText);
+                return {
+                          id: crypto.randomUUID(),
+                          packId,
+                          text: claimText,
+                          status: result.status,
+                          confidence: result.confidence,
+                };
+        })
+      );
 
-export async function runMockEngine(text: string): Promise<EvidencePack> {
-  const jobId = crypto.randomUUID();
-  const packId = crypto.randomUUID();
-  const claimTexts = splitIntoClaims(text).slice(0, 3);
+  // Step 3: Build EvidencePack (no retrieval in LLM-only mode)
+    const pack = {
+          id: packId,
+          jobId,
+                      claims: classifiedClaims,
+                           evidence: [],
+          createdAt: new Date().toISOString(),
+          engineVersion: ENGINE_VERSION,
+    };
 
-  const claims: Claim[] = claimTexts.map((claimText, index) => ({
-    id: crypto.randomUUID(),
-    packId,
-    text: claimText,
-    status: CLAIM_STATUSES[index % CLAIM_STATUSES.length]
-  }));
-
-  const evidence: Evidence[] = claims.map((claim, index) => ({
-    id: crypto.randomUUID(),
-    claimId: claim.id,
-    sourceUrl: `https://example.com/source-${index + 1}`,
-    snippet: `Mock supporting snippet for claim: \"${claim.text}\"`,
-    relevanceScore: Math.max(0.35, 0.95 - index * 0.2)
-  }));
-
-  const pack = {
-    id: packId,
-    jobId,
-    claims,
-    evidence,
-    createdAt: new Date().toISOString()
-  };
-
+  // Step 4: Validate against core schema before returning
   return EvidencePackSchema.parse(pack);
 }
+
+// Keep legacy export name for backwards compatibility with route.ts
+export { runVerification as runMockEngine };

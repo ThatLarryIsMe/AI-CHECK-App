@@ -1,10 +1,11 @@
-import { z } from "zod";
+–import { z } from "zod";
 
 export const ClaimSchema = z.object({
   id: z.string().uuid(),
   packId: z.string().uuid(),
   text: z.string(),
-  status: z.enum(["supported", "mixed", "unsupported"])
+  status: z.enum(["supported", "mixed", "unsupported"]),
+    confidence: z.number().min(0).max(1)
 });
 
 export const EvidenceSchema = z.object({
@@ -21,6 +22,7 @@ export const EvidencePackSchema = z.object({
   claims: z.array(ClaimSchema),
   evidence: z.array(EvidenceSchema),
   createdAt: z.string().datetime()
+    engineVersion: z.string(),
 });
 
 export type Claim = z.infer<typeof ClaimSchema>;
