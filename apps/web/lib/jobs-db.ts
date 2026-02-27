@@ -14,22 +14,17 @@ export interface JobRecord {
   completedAt: Date | null;
 }
 
-export async function createJob(
-  inputText: string,
-  userId?: string
-): Promise<JobRecord> {
+export async function createJob(inputText: string): Promise<JobRecord> {
   const id = crypto.randomUUID();
-  // jobs table requires user_id FK — use a sentinel UUID for anonymous jobs
-  const anonUserId = userId ?? "00000000-0000-0000-0000-000000000000";
   const { rows } = await pool.query<JobRecord>(
-    `INSERT INTO jobs (id, user_id, status, input_text)
-     VALUES ($1, $2, 'queued', $3)
+    `INSERT INTO jobs (id, status, input_text)
+     VALUES ($1, 'queued', $2)
      RETURNING id, status, input_text AS "inputText",
                pack_id AS "packId", error,
                created_at AS "createdAt",
                updated_at AS "updatedAt",
                completed_at AS "completedAt"`,
-    [id, anonUserId, inputText]
+    [id, inputText]
   );
   return rows[0];
 }
