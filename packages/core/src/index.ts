@@ -1,4 +1,12 @@
 import { z } from "zod";
+export {
+  ClaimSchema,
+  EvidenceSchema,
+  EvidencePackSchema,
+  type Claim,
+  type Evidence,
+  type EvidencePack
+} from "./schema";
 
 export const UserSchema = z.object({
   id: z.string().uuid(),
