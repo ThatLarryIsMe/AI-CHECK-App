@@ -1,10 +1,11 @@
-import { z } from "zod";
+–import { z } from "zod";
 
 export const ClaimSchema = z.object({
   id: z.string().uuid(),
   packId: z.string().uuid(),
   text: z.string(),
-  status: z.enum(["supported", "mixed", "unsupported"])
+  status: z.enum(["supported", "mixed", "unsupported"]),
+    confidence: z.number().min(0).max(1).optional()
 });
 
 export const EvidenceSchema = z.object({
