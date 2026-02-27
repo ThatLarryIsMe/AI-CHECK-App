@@ -3,6 +3,18 @@
 import { useEffect, useState } from "react";
 import type { EvidencePack } from "@proofmode/core";
 
+const STATUS_LABELS: Record<string, string> = {
+    supported: "Supported",
+    mixed: "Not Enough Info",
+    unsupported: "Refuted",
+};
+
+const STATUS_COLORS: Record<string, string> = {
+    supported: "text-green-400",
+    mixed: "text-yellow-400",
+    unsupported: "text-red-400",
+};
+
 export default function PackPage({ params }: { params: { id: string } }) {
   const [pack, setPack] = useState<EvidencePack | null>(null);
   const [error, setError] = useState<string | null>(null);
