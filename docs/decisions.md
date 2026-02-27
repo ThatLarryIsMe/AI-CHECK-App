@@ -28,3 +28,15 @@
 - Added structured JSON logging (console.log/warn/error) for: verification_complete, claim_classification_failed, job_completed, job_failed, rate_limit_exceeded
 - Log format: { level, event, jobId, ...context } — machine-readable, ready for log aggregation
 - No external dependencies added; all hardening is pure in-process logic
+
+
+## Phase E — Conversion Layer
+- / becomes a public landing page: hero, 3-step how-it-works, waitlist email form
+- /verify stays for internal/demo use; linked from landing page as "Try the demo"
+- Added POST /api/waitlist route: in-memory store, email validation, idempotent (201 on first, 200 on repeat)
+- Added GET /api/waitlist route: returns count only (no PII exposed)
+- Waitlist persistence deferred to Phase F (DB wiring)
+- Added GET /api/packs/:id/export.md route: returns text/markdown with Content-Disposition attachment
+- Export format: pack header (id, engineVersion, created_at), claims with classification + confidence, evidence placeholder, disclaimer
+- Export button added to /packs/[id] page (client-side navigation to export route)
+- Chose server-side route over client-side Blob: stable formatting, extensible to PDF later
