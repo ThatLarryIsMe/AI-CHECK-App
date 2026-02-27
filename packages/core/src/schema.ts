@@ -5,7 +5,7 @@ export const ClaimSchema = z.object({
   packId: z.string().uuid(),
   text: z.string(),
   status: z.enum(["supported", "mixed", "unsupported"]),
-    confidence: z.number().min(0).max(1).optional()
+    confidence: z.number().min(0).max(1)
 });
 
 export const EvidenceSchema = z.object({
@@ -22,6 +22,7 @@ export const EvidencePackSchema = z.object({
   claims: z.array(ClaimSchema),
   evidence: z.array(EvidenceSchema),
   createdAt: z.string().datetime()
+    engineVersion: z.string(),
 });
 
 export type Claim = z.infer<typeof ClaimSchema>;
