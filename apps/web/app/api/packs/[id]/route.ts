@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
-import { getPack } from "@/lib/jobs";
+import { getPack } from "@/lib/jobs-db";
 
-export async function GET(_: Request, { params }: { params: { id: string } }) {
-  const pack = getPack(params.id);
-
+export async function GET(
+  _: Request,
+  { params }: { params: { id: string } }
+) {
+  const pack = await getPack(params.id);
   if (!pack) {
     return NextResponse.json({ error: "Pack not found" }, { status: 404 });
   }
-
   return NextResponse.json(pack);
 }
