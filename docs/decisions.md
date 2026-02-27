@@ -53,3 +53,11 @@
 - DATABASE_URL added to .env.example with placeholder and instructions
 - In-memory waitlist store (Phase E) fully replaced; no backwards compat needed
 - Phase F2 (jobs/packs persistence) deferred — requires same DATABASE_URL, will reuse db.ts helper
+
+## Phase G1 — Conversion Polish
+
+- localStorage-based verification history (key: `proofmode_history`, max 10 entries) displayed as sidebar on `/verify`
+- History entries store `{ packId, snippet, ts }`; links resolve to `/packs/${packId}` after polling job for packId
+- Export v2: server-side route upgraded with Summary table (total/supported/mixed/unsupported/avgConfidence), Method & Limitations block, Disclaimer
+- Error UX upgraded to bordered error card with dismiss button; pack-load errors include Retry button
+- Root `decisions.md` removed; `docs/decisions.md` is the single source of truth (append-only)
