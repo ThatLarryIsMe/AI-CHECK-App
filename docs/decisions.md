@@ -16,3 +16,15 @@
 - confidence field on ClaimSchema made required (was optional, engine always provides it)
 - runMockEngine alias retained for backwards compat but points to real engine
 - Errors mark job as failed with descriptive message
+
+
+## Phase D — Hardening Layer
+- Added LLM timeout (AbortController, 15s max) — prevents infinite hangs on OpenAI calls
+- Error type: LLM_TIMEOUT thrown on abort, structured for downstream handling
+- Added input length guard (5,000 character max) before any LLM calls — prevents runaway token costs
+- Error type: INPUT_TOO_LONG with descriptive message and character count
+- Per-claim failure isolation: classifyClaim() errors caught individually; failed claims default to not_enough_info with confidence 0; pack always completes unless extraction itself fails
+- Added in-memory rate limiter on POST /api/verify: 10 requests per IP per 60 seconds; returns 429 with structured message
+- Added structured JSON logging (console.log/warn/error) for: verification_complete, claim_classification_failed, job_completed, job_failed, rate_limit_exceeded
+- Log format: { level, event, jobId, ...context } — machine-readable, ready for log aggregation
+- No external dependencies added; all hardening is pure in-process logic
