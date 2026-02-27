@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE TABLE IF NOT EXISTS jobs (
     id UUID PRIMARY KEY,
-    user_id UUID NOT NULL REFERENCES users(id),
+    user_id UUID REFERENCES users(id),
     status TEXT NOT NULL DEFAULT 'queued'
         CHECK (status IN ('queued','processing','complete','failed')),
     input_text TEXT,
@@ -49,14 +49,26 @@ CREATE TABLE IF NOT EXISTS waitlist_signups (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Phase F2: idempotent migrations for jobs + packs
--- Run these if upgrading an existing DB that was created before F2
+-- Phase F2: idempotent migrations for existing DBs
+-- Makes user_id nullable (no sentinel UUID needed for anonymous jobs)
 ALTER TABLE jobs
     ADD COLUMN IF NOT EXISTS input_text TEXT,
     ADD COLUMN IF NOT EXISTS pack_id UUID,
     ADD COLUMN IF NOT EXISTS error TEXT,
     ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ;
+
+-- Drop NOT NULL from user_id if it exists (idempotent via DO block)
+DO $$ BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'jobs'
+      AND column_name = 'user_id'
+      AND is_nullable = 'NO'
+  ) THEN
+    ALTER TABLE jobs ALTER COLUMN user_id DROP NOT NULL;
+  END IF;
+END $$;
 
 DO $$ BEGIN
   IF NOT EXISTS (

@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runVerification } from "@/lib/engine";
-import { createJob, savePack, updateJob } from "@/lib/jobs";
+import {
+  createJob,
+  markProcessing,
+  markComplete,
+  markFailed,
+} from "@/lib/jobs-db";
 
 // In-memory rate limiter: max 10 requests per IP per 60 seconds
 const rateLimitMap = new Map<string, { count: number; windowStart: number }>();
@@ -10,16 +15,13 @@ const RATE_LIMIT_WINDOW_MS = 60_000;
 function isRateLimited(ip: string): boolean {
   const now = Date.now();
   const entry = rateLimitMap.get(ip);
-
   if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
     rateLimitMap.set(ip, { count: 1, windowStart: now });
     return false;
   }
-
   if (entry.count >= RATE_LIMIT_MAX) {
     return true;
   }
-
   entry.count += 1;
   return false;
 }
@@ -30,7 +32,6 @@ export async function POST(request: NextRequest) {
     request.headers.get("x-forwarded-for")?.split(",")[0].trim() ??
     request.headers.get("x-real-ip") ??
     "unknown";
-
   if (isRateLimited(ip)) {
     console.warn(
       JSON.stringify({
@@ -48,27 +49,27 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json().catch(() => null);
   const text = typeof body?.text === "string" ? body.text.trim() : "";
-
   if (!text) {
     return NextResponse.json({ error: "text is required" }, { status: 400 });
   }
 
-  const jobId = crypto.randomUUID();
-  createJob(jobId);
+  const job = await createJob(text);
+  const jobId = job.id;
 
   void (async () => {
     const startTime = Date.now();
-    updateJob(jobId, { status: "running" });
+    await markProcessing(jobId);
     try {
       const pack = await runVerification(text, jobId);
-      savePack(pack);
-      updateJob(jobId, { status: "completed", packId: pack.id });
+      const { savePack } = await import("@/lib/jobs-db");
+      const packId = await savePack(jobId, pack.engineVersion ?? "1.0.0-lite", pack);
+      await markComplete(jobId, packId);
       console.log(
         JSON.stringify({
           level: "info",
           event: "job_completed",
           jobId,
-          packId: pack.id,
+          packId,
           durationMs: Date.now() - startTime,
         })
       );
@@ -77,7 +78,7 @@ export async function POST(request: NextRequest) {
         error instanceof Error ? error.message : "Unknown verify failure";
       const errorType =
         (error as { type?: string })?.type ?? "UNKNOWN_ERROR";
-      updateJob(jobId, { status: "failed", error: message });
+      await markFailed(jobId, message);
       console.error(
         JSON.stringify({
           level: "error",
