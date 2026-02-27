@@ -40,3 +40,16 @@
 - Export format: pack header (id, engineVersion, created_at), claims with classification + confidence, evidence placeholder, disclaimer
 - Export button added to /packs/[id] page (client-side navigation to export route)
 - Chose server-side route over client-side Blob: stable formatting, extensible to PDF later
+
+
+## Phase F1 — Persist Waitlist in Postgres
+- DB: Managed Postgres (Neon recommended); single DATABASE_URL connection string
+- ORM: None — direct SQL via pg Pool (consistent with project constraints)
+- Migration: waitlist_signups table added to infra/db/schema.sql (append-only schema)
+- waitlist_signups: id UUID (gen_random_uuid()), email TEXT UNIQUE NOT NULL, created_at TIMESTAMPTZ
+- POST /api/waitlist: INSERT ON CONFLICT DO NOTHING — idempotent (201 new, 200 existing)
+- GET /api/waitlist: returns { count } only — no PII exposed
+- db.ts helper: Pool with SSL in production, no SSL in development
+- DATABASE_URL added to .env.example with placeholder and instructions
+- In-memory waitlist store (Phase E) fully replaced; no backwards compat needed
+- Phase F2 (jobs/packs persistence) deferred — requires same DATABASE_URL, will reuse db.ts helper

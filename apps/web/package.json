@@ -12,12 +12,14 @@
     "next": "14.2.18",
     "react": "18.3.1",
     "react-dom": "18.3.1",
-    "@proofmode/core": "workspace:*"
+    "@proofmode/core": "workspace:*",
+    "pg": "^8.13.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.1",
     "@types/react": "^18.3.14",
     "@types/react-dom": "^18.3.2",
+    "@types/pg": "^8.11.10",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.16",
