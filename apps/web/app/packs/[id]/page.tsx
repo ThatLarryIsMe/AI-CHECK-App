@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import type { EvidencePack } from "@proofmode/core";
 
+const VERSION = "0.1.0";
+
 type ClaimWithEvidence = EvidencePack["claims"][number] & {
   classification?: string;
   evidence?: Array<{
@@ -27,6 +29,8 @@ const STATUS_COLORS: Record<string, string> = {
 export default function PackPage({ params }: { params: { id: string } }) {
   const [pack, setPack] = useState<EvidencePack | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [copyLinkState, setCopyLinkState] = useState<"idle" | "copied">("idle");
+  const [copySummaryState, setCopySummaryState] = useState<"idle" | "copied">("idle");
 
   useEffect(() => {
     async function loadPack() {
@@ -59,27 +63,80 @@ export default function PackPage({ params }: { params: { id: string } }) {
     URL.revokeObjectURL(url);
   }
 
+  function handleCopyLink() {
+    void navigator.clipboard.writeText(window.location.href).then(() => {
+      setCopyLinkState("copied");
+      setTimeout(() => setCopyLinkState("idle"), 2000);
+    });
+  }
+
+  function handleCopySummary() {
+    if (!pack) return;
+    const claims = pack.claims as ClaimWithEvidence[];
+    const supported = claims.filter((c) => (c.classification ?? c.status) === "supported").length;
+    const mixed = claims.filter((c) => (c.classification ?? c.status) === "mixed").length;
+    const unsupported = claims.filter((c) => (c.classification ?? c.status) === "unsupported").length;
+    const total = claims.length;
+
+    const confidences = claims
+      .map((c) => (c.confidence != null ? (c.confidence > 1 ? c.confidence : Math.round(c.confidence * 100)) : null))
+      .filter((v): v is number => v !== null);
+    const avgConfidence =
+      confidences.length > 0
+        ? Math.round(confidences.reduce((a, b) => a + b, 0) / confidences.length)
+        : null;
+
+    const totalEvidence = claims.reduce((sum, c) => sum + (Array.isArray(c.evidence) ? c.evidence.length : 0), 0);
+    const retrievalLine = totalEvidence > 0 ? "Retrieval: Evidence attached" : "Retrieval: LLM-only mode";
+
+    const generatedAt = (pack as Record<string, unknown>).generatedAt as string | undefined;
+
+    const top3 = claims.slice(0, 3).map((c, i) => {
+      const text = c.text.length > 120 ? c.text.slice(0, 117) + "..." : c.text;
+      const cls = STATUS_LABELS[c.classification ?? c.status] ?? (c.classification ?? c.status);
+      return `${i + 1}. [${cls}] ${text}`;
+    });
+
+    const lines: string[] = [
+      `ProofMode v${VERSION}`,
+      `Pack ID: ${params.id}`,
+      ...(generatedAt ? [`Generated: ${new Date(generatedAt).toLocaleString()}`] : []),
+      "",
+      `Totals: ${supported} Supported / ${mixed} Mixed / ${unsupported} Refuted / ${total} total`,
+      ...(avgConfidence !== null ? [`Avg confidence: ${avgConfidence}%`] : []),
+      retrievalLine,
+      "",
+      "Top claims:",
+      ...top3,
+      "",
+      window.location.href,
+    ];
+
+    void navigator.clipboard.writeText(lines.join("\n")).then(() => {
+      setCopySummaryState("copied");
+      setTimeout(() => setCopySummaryState("idle"), 2000);
+    });
+  }
+
   if (error) {
     return (
-      <main className="mx-auto max-w-3xl px-6 py-12">
-        <div className="rounded-lg border border-red-700 bg-red-950/40 p-6">
-          <p className="text-red-400 font-semibold text-lg">Failed to load pack</p>
-          <p className="text-red-300 text-sm mt-1">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="mt-4 text-sm text-cyan-400 underline hover:text-cyan-300"
-          >
-            Retry
-          </button>
-        </div>
+      <main className="flex min-h-screen flex-col items-center justify-center bg-slate-950 p-8 text-slate-100">
+        <h1 className="text-2xl font-bold">Failed to load pack</h1>
+        <p className="mt-2 text-slate-400">{error}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-4 text-sm text-cyan-400 underline hover:text-cyan-300"
+        >
+          Retry
+        </button>
       </main>
     );
   }
 
   if (!pack) {
     return (
-      <main className="mx-auto max-w-3xl px-6 py-12">
-        <p className="text-slate-400 animate-pulse">Loading evidence pack…</p>
+      <main className="flex min-h-screen flex-col items-center justify-center bg-slate-950 p-8 text-slate-100">
+        <p className="animate-pulse text-slate-400">Loading evidence pack…</p>
       </main>
     );
   }
@@ -90,83 +147,96 @@ export default function PackPage({ params }: { params: { id: string } }) {
   const unsupported = claims.filter((c) => (c.classification ?? c.status) === "unsupported").length;
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-12">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-cyan-400 mb-1">Evidence Pack</h1>
-          <p className="text-slate-500 text-sm">ID: {params.id}</p>
-        </div>
-        <div className="flex gap-2">
+    <main className="min-h-screen bg-slate-950 p-8 text-slate-100">
+      <div className="mx-auto max-w-3xl">
+        <h1 className="text-3xl font-bold">Evidence Pack</h1>
+        <p className="mt-1 text-sm text-slate-400">ID: {params.id}</p>
+
+        {/* Export + Share button row */}
+        <div className="mt-4 flex flex-wrap items-center gap-2">
           <button
             onClick={handleExportMarkdown}
-            className="px-4 py-2 bg-cyan-700 hover:bg-cyan-600 text-white font-semibold rounded-lg transition text-sm"
-            title="Download as Markdown"
+            className="rounded bg-slate-800 px-3 py-1.5 text-sm text-slate-200 transition hover:bg-slate-700"
           >
             ↓ Markdown
           </button>
           <button
             onClick={handleExportJSON}
-            className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-lg transition text-sm"
-            title="Download as JSON"
+            className="rounded bg-slate-800 px-3 py-1.5 text-sm text-slate-200 transition hover:bg-slate-700"
           >
             ↓ JSON
           </button>
+
+          <div className="mx-1 h-4 w-px bg-slate-700" />
+
+          <button
+            onClick={handleCopyLink}
+            className="rounded bg-slate-800 px-3 py-1.5 text-sm transition hover:bg-slate-700"
+            style={{ color: copyLinkState === "copied" ? "#34d399" : "#94a3b8" }}
+          >
+            {copyLinkState === "copied" ? "✓ Copied!" : "🔗 Copy Link"}
+          </button>
+
+          <button
+            onClick={handleCopySummary}
+            className="rounded bg-slate-800 px-3 py-1.5 text-sm transition hover:bg-slate-700"
+            style={{ color: copySummaryState === "copied" ? "#34d399" : "#94a3b8" }}
+          >
+            {copySummaryState === "copied" ? "✓ Copied!" : "📋 Copy Summary"}
+          </button>
         </div>
-      </div>
 
-      <div className="flex gap-4 mb-8 text-sm">
-        <span className="text-green-400">✓ {supported} Supported</span>
-        <span className="text-yellow-400">○ {mixed} Mixed</span>
-        <span className="text-red-400">✕ {unsupported} Refuted</span>
-        <span className="text-slate-400">{claims.length} total claims</span>
-      </div>
+        {/* Stats bar */}
+        <div className="mt-6 flex flex-wrap gap-4 rounded-lg bg-slate-900 px-4 py-3 text-sm">
+          <span className="text-green-400">✓ {supported} Supported</span>
+          <span className="text-yellow-400">&nbsp;&nbsp;○ {mixed} Mixed</span>
+          <span className="text-red-400">&nbsp;&nbsp;✕ {unsupported} Refuted</span>
+          <span className="text-slate-400">&nbsp;&nbsp;{claims.length} total claims</span>
+        </div>
 
-      <ul className="space-y-6">
+        {/* Claims list */}
         {claims.map((claim, i) => {
           const classification = claim.classification ?? claim.status;
           const evidence = Array.isArray(claim.evidence) ? claim.evidence : [];
-          const confidence = claim.confidence > 1 ? claim.confidence : Math.round(claim.confidence * 100);
-
+          const confidence =
+            claim.confidence > 1 ? claim.confidence : Math.round(claim.confidence * 100);
           return (
-            <li key={i} className="p-5 bg-slate-800 rounded-xl">
-              <p className="text-white font-medium mb-2">{claim.text}</p>
-              <div className="flex gap-4 text-sm mb-4">
+            <div key={i} className="mt-6 rounded-lg border border-slate-800 bg-slate-900 p-4">
+              <p className="font-medium text-slate-100">{claim.text}</p>
+              <div className="mt-2 flex items-center gap-4 text-sm">
                 <span className={STATUS_COLORS[classification] ?? "text-slate-400"}>
                   {STATUS_LABELS[classification] ?? classification}
                 </span>
                 <span className="text-slate-400">Confidence: {confidence}%</span>
               </div>
-
-              {evidence.length > 0 ? (
-                <div className="space-y-3">
-                  {evidence.map((item, evidenceIndex) => (
-                    <article key={evidenceIndex} className="rounded-lg border border-slate-700 bg-slate-900 p-3">
-                      <div className="flex flex-wrap items-center gap-2 mb-2">
+              <div className="mt-3">
+                {evidence.length > 0 ? (
+                  <ul className="space-y-3">
+                    {evidence.map((item, evidenceIndex) => (
+                      <li key={evidenceIndex} className="rounded border border-slate-700 bg-slate-800 p-3">
                         <a
                           href={item.sourceUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-cyan-400 hover:text-cyan-300 underline"
+                          className="text-sm font-medium text-cyan-400 hover:underline"
                         >
                           {item.sourceTitle}
                         </a>
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-800">
-                          Retrieved via Brave Search
-                        </span>
-                      </div>
-                      <blockquote className="text-slate-300 border-l-2 border-slate-600 pl-3 italic">
-                        {item.quotedSpan}
-                      </blockquote>
-                    </article>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-slate-400">No evidence retrieved (LLM-only mode)</p>
-              )}
-            </li>
+                        <p className="mt-0.5 text-xs text-slate-500">Retrieved via Brave Search</p>
+                        <blockquote className="mt-2 border-l-2 border-slate-600 pl-3 text-sm italic text-slate-300">
+                          {item.quotedSpan}
+                        </blockquote>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-slate-500">No evidence retrieved (LLM-only mode)</p>
+                )}
+              </div>
+            </div>
           );
         })}
-      </ul>
+      </div>
     </main>
   );
 }
