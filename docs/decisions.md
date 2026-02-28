@@ -85,3 +85,14 @@
 - Added protected `GET /api/admin/stats` route for aggregate metrics only (`total_jobs`, `total_packs`, `total_waitlist_signups`, `last_24h_jobs`, `avg_claims_per_pack`) with no PII.
 - Expanded structured telemetry in verify flow and engine logs with: `jobId`, `totalDurationMs`, `llmDurationMs`, `retrievalDurationMs`, `claimsCount`, `evidenceCount`, `engineVersion`, `inputLength`, and `errorType`.
 - Updated deploy docs and environment examples to include `BETA_ACCESS_KEY` and Vercel deployment + smoke test checklist.
+
+
+## Phase N1 — Production Observability Baseline
+- Added `job_metrics` table to `infra/db/schema.sql` with FK `REFERENCES jobs(id) ON DELETE CASCADE`, columns: `job_id`, `duration_ms`, `llm_timeout`, `retrieval_used`, `created_at`.
+- Added idempotent `CREATE INDEX IF NOT EXISTS` on `job_id` and `created_at` for query performance.
+- Instrumented verify route: captures `startTime`, computes `duration_ms`, sets `llm_timeout = true` on timeout errors, `retrieval_used = true` when `evidenceCount > 0`.
+- Metrics insert is wrapped in explicit `try/catch` — a failure logs `job_metrics_insert_failed` event and does NOT propagate; verification flow is unaffected.
+- Created `GET /api/admin/health` route returning `{totalJobsToday, avgDurationMs, timeoutRate, retrievalRate}` from `job_metrics`.
+- Admin health route requires `x-proofmode-key` header via `requireBetaKey()`. Returns 401 if key invalid or missing.
+- All aggregation metrics are 0-safe: returns zeroes if no job_metrics rows exist.
+- Decision: metrics stored in separate `job_metrics` table (not on jobs) to allow append-only observability without touching the core jobs schema.
