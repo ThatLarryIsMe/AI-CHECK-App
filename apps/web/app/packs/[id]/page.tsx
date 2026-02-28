@@ -2,6 +2,16 @@
 import { useEffect, useState } from "react";
 import type { EvidencePack } from "@proofmode/core";
 
+type ClaimWithEvidence = EvidencePack["claims"][number] & {
+  classification?: string;
+  evidence?: Array<{
+    sourceUrl: string;
+    sourceTitle: string;
+    quotedSpan: string;
+    retrievedAt: string;
+  }>;
+};
+
 const STATUS_LABELS: Record<string, string> = {
   supported: "Supported",
   mixed: "Not Enough Info",
@@ -34,12 +44,10 @@ export default function PackPage({ params }: { params: { id: string } }) {
     void loadPack();
   }, [params.id]);
 
-  // G1.2 — Export v2: Markdown download
   function handleExportMarkdown() {
     window.location.href = `/api/packs/${params.id}/export.md`;
   }
 
-  // G1.2 — Export v2: JSON download via Blob
   function handleExportJSON() {
     if (!pack) return;
     const blob = new Blob([JSON.stringify(pack, null, 2)], { type: "application/json" });
@@ -76,6 +84,11 @@ export default function PackPage({ params }: { params: { id: string } }) {
     );
   }
 
+  const claims = pack.claims as ClaimWithEvidence[];
+  const supported = claims.filter((c) => (c.classification ?? c.status) === "supported").length;
+  const mixed = claims.filter((c) => (c.classification ?? c.status) === "mixed").length;
+  const unsupported = claims.filter((c) => (c.classification ?? c.status) === "unsupported").length;
+
   return (
     <main className="mx-auto max-w-3xl px-6 py-12">
       <div className="flex items-center justify-between mb-8">
@@ -83,7 +96,6 @@ export default function PackPage({ params }: { params: { id: string } }) {
           <h1 className="text-3xl font-bold text-cyan-400 mb-1">Evidence Pack</h1>
           <p className="text-slate-500 text-sm">ID: {params.id}</p>
         </div>
-        {/* G1.2 — Export v2: two export formats */}
         <div className="flex gap-2">
           <button
             onClick={handleExportMarkdown}
@@ -102,26 +114,58 @@ export default function PackPage({ params }: { params: { id: string } }) {
         </div>
       </div>
 
-      {/* Summary bar */}
       <div className="flex gap-4 mb-8 text-sm">
-        <span className="text-green-400">✓ {pack.claims.filter((c) => c.classification === "supported").length} Supported</span>
-        <span className="text-yellow-400">○ {pack.claims.filter((c) => c.classification === "mixed").length} Mixed</span>
-        <span className="text-red-400">✕ {pack.claims.filter((c) => c.classification === "unsupported").length} Refuted</span>
-        <span className="text-slate-400">{pack.claims.length} total claims</span>
+        <span className="text-green-400">✓ {supported} Supported</span>
+        <span className="text-yellow-400">○ {mixed} Mixed</span>
+        <span className="text-red-400">✕ {unsupported} Refuted</span>
+        <span className="text-slate-400">{claims.length} total claims</span>
       </div>
 
       <ul className="space-y-6">
-        {pack.claims.map((claim, i) => (
-          <li key={i} className="p-5 bg-slate-800 rounded-xl">
-            <p className="text-white font-medium mb-2">{claim.text}</p>
-            <div className="flex gap-4 text-sm">
-              <span className={STATUS_COLORS[claim.classification] ?? "text-slate-400"}>
-                {STATUS_LABELS[claim.classification] ?? claim.classification}
-              </span>
-              <span className="text-slate-400">Confidence: {claim.confidence}%</span>
-            </div>
-          </li>
-        ))}
+        {claims.map((claim, i) => {
+          const classification = claim.classification ?? claim.status;
+          const evidence = Array.isArray(claim.evidence) ? claim.evidence : [];
+          const confidence = claim.confidence > 1 ? claim.confidence : Math.round(claim.confidence * 100);
+
+          return (
+            <li key={i} className="p-5 bg-slate-800 rounded-xl">
+              <p className="text-white font-medium mb-2">{claim.text}</p>
+              <div className="flex gap-4 text-sm mb-4">
+                <span className={STATUS_COLORS[classification] ?? "text-slate-400"}>
+                  {STATUS_LABELS[classification] ?? classification}
+                </span>
+                <span className="text-slate-400">Confidence: {confidence}%</span>
+              </div>
+
+              {evidence.length > 0 ? (
+                <div className="space-y-3">
+                  {evidence.map((item, evidenceIndex) => (
+                    <article key={evidenceIndex} className="rounded-lg border border-slate-700 bg-slate-900 p-3">
+                      <div className="flex flex-wrap items-center gap-2 mb-2">
+                        <a
+                          href={item.sourceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-cyan-400 hover:text-cyan-300 underline"
+                        >
+                          {item.sourceTitle}
+                        </a>
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-800">
+                          Retrieved via Brave Search
+                        </span>
+                      </div>
+                      <blockquote className="text-slate-300 border-l-2 border-slate-600 pl-3 italic">
+                        {item.quotedSpan}
+                      </blockquote>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-400">No evidence retrieved (LLM-only mode)</p>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </main>
   );
