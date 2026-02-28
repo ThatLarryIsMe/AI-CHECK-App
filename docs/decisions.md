@@ -70,3 +70,10 @@
 - Added forward-looking retrieval statement: web retrieval layer planned in a future release
 - Rewrote root README with investor-ready product summary, architecture diagram, stack, guardrails, env vars, setup, schema, and roadmap
 - Added footer metadata on landing page with version `v0.3.0-beta` and trust page link
+
+## Phase J — Controlled Retrieval Layer (Brave Search)
+- Added an optional Brave Search retrieval layer to attach real evidence snippets to each extracted claim.
+- Retrieval is fail-open: if Brave retrieval fails (or API key is absent), verification continues in LLM-only mode with empty evidence for that claim.
+- Retrieval limits: max 3 results per claim, claim extraction remains capped at max 5 claims.
+- Timeout guard: each Brave API call has a hard 5-second timeout.
+- BRAVE_API_KEY is optional and server-only; retrieval is disabled when not configured.

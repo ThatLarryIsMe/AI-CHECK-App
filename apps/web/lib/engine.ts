@@ -1,9 +1,11 @@
 import { EvidencePackSchema, type EvidencePack } from "@proofmode/core";
 import { extractClaims } from "./claim-extractor";
 import { classifyClaim } from "./classifier";
+import { retrieveEvidence } from "./retrieval";
 
 const ENGINE_VERSION = process.env.ENGINE_VERSION ?? "1.0.0-lite";
 const MAX_INPUT_LENGTH = 5_000;
+const MAX_CLAIMS = 5;
 
 export async function runVerification(
   text: string,
@@ -22,16 +24,14 @@ export async function runVerification(
   const packId = crypto.randomUUID();
 
   // Step 1: Extract atomic claims from input text
-  const claimTexts = await extractClaims(text);
+  const claimTexts = (await extractClaims(text)).slice(0, MAX_CLAIMS);
 
-  // Step 2: Classify each claim with per-claim failure isolation
-  // If one claim fails, mark it not_enough_info and continue others
-  const classifiedClaims = await Promise.all(
+  // Step 2: Classify + retrieve evidence with per-claim failure isolation
+  const claimsWithEvidence = await Promise.all(
     claimTexts.map(async (claimText) => {
-      let result: { status: string; confidence: number };
-      try {
-        result = await classifyClaim(claimText);
-      } catch (err: unknown) {
+      const claimId = crypto.randomUUID();
+
+      const classificationPromise = classifyClaim(claimText).catch((err: unknown) => {
         const msg = err instanceof Error ? err.message : "classification failed";
         console.error(
           JSON.stringify({
@@ -42,41 +42,76 @@ export async function runVerification(
             error: msg,
           })
         );
-        result = { status: "not_enough_info", confidence: 0 };
-      }
+        return { status: "mixed" as const, confidence: 0 };
+      });
+
+      const evidencePromise = (async () => {
+        try {
+          return await retrieveEvidence(claimText);
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : "retrieval failed";
+          console.error(
+            JSON.stringify({
+              level: "warn",
+              jobId,
+              event: "claim_retrieval_failed",
+              claim: claimText.slice(0, 100),
+              error: msg,
+            })
+          );
+          return [];
+        }
+      })();
+
+      const [result, claimEvidence] = await Promise.all([
+        classificationPromise,
+        evidencePromise,
+      ]);
+
       return {
-        id: crypto.randomUUID(),
+        id: claimId,
         packId,
         text: claimText,
-        status: result.status as "supported" | "refuted" | "not_enough_info",
+        status: result.status,
         confidence: result.confidence,
+        evidence: claimEvidence,
       };
     })
   );
 
-  // Step 3: Build EvidencePack (no retrieval in LLM-only mode)
+  const flattenedEvidence = claimsWithEvidence.flatMap((claim) =>
+    claim.evidence.map((item) => ({
+      id: crypto.randomUUID(),
+      claimId: claim.id,
+      sourceUrl: item.sourceUrl,
+      snippet: item.quotedSpan,
+      relevanceScore: 1,
+      sourceTitle: item.sourceTitle,
+      quotedSpan: item.quotedSpan,
+      retrievedAt: item.retrievedAt,
+    }))
+  );
+
   const pack = {
     id: packId,
     jobId,
-    claims: classifiedClaims,
-    evidence: [],
+    claims: claimsWithEvidence,
+    evidence: flattenedEvidence,
     createdAt: new Date().toISOString(),
     engineVersion: ENGINE_VERSION,
   };
 
-  // Step 4: Validate against core schema before returning
-  const validated = EvidencePackSchema.parse(pack);
+  // Step 3: Validate shape against core schema before returning
+  EvidencePackSchema.parse(pack);
 
-  // Step 5: Structured log on success
-  const supportedCount = classifiedClaims.filter(
+  // Step 4: Structured log on success
+  const supportedCount = claimsWithEvidence.filter(
     (c) => c.status === "supported"
   ).length;
-  const refutedCount = classifiedClaims.filter(
-    (c) => c.status === "refuted"
+  const refutedCount = claimsWithEvidence.filter(
+    (c) => c.status === "unsupported"
   ).length;
-  const neiCount = classifiedClaims.filter(
-    (c) => c.status === "not_enough_info"
-  ).length;
+  const neiCount = claimsWithEvidence.filter((c) => c.status === "mixed").length;
 
   console.log(
     JSON.stringify({
@@ -84,13 +119,14 @@ export async function runVerification(
       jobId,
       event: "verification_complete",
       packId,
-      claimsTotal: classifiedClaims.length,
+      claimsTotal: claimsWithEvidence.length,
       supported: supportedCount,
       refuted: refutedCount,
       not_enough_info: neiCount,
+      retrievalCalls: claimsWithEvidence.length,
       engineVersion: ENGINE_VERSION,
     })
   );
 
-  return validated;
+  return pack as EvidencePack;
 }
