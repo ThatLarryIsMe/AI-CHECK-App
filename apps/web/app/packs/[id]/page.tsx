@@ -1,8 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import type { EvidencePack } from "@proofmode/core";
-
-const VERSION = "0.1.0";
+import { VERSION } from "@/../../version";
 
 type ClaimWithEvidence = EvidencePack["claims"][number] & {
   classification?: string;
@@ -25,6 +24,15 @@ const STATUS_COLORS: Record<string, string> = {
   mixed: "text-yellow-400",
   unsupported: "text-red-400",
 };
+
+function buildFeedbackHref(packId: string): string {
+  const subject = encodeURIComponent("ProofMode Beta Feedback");
+  const url = typeof window !== "undefined" ? window.location.href : `/packs/${packId}`;
+  const body = encodeURIComponent(
+    `ProofMode Version: ${VERSION}\nPage URL: ${url}\nPack ID: ${packId}\n\nWhat did you try?\n\nWhat did you expect?\n\nWhat happened?\n\nAnything confusing?\n`
+  );
+  return `mailto:feedback@proofmode.ai?subject=${subject}&body=${body}`;
+}
 
 export default function PackPage({ params }: { params: { id: string } }) {
   const [pack, setPack] = useState<EvidencePack | null>(null);
@@ -88,7 +96,6 @@ export default function PackPage({ params }: { params: { id: string } }) {
 
     const totalEvidence = claims.reduce((sum, c) => sum + (Array.isArray(c.evidence) ? c.evidence.length : 0), 0);
     const retrievalLine = totalEvidence > 0 ? "Retrieval: Evidence attached" : "Retrieval: LLM-only mode";
-
     const generatedAt = (pack as Record<string, unknown>).generatedAt as string | undefined;
 
     const top3 = claims.slice(0, 3).map((c, i) => {
@@ -236,6 +243,16 @@ export default function PackPage({ params }: { params: { id: string } }) {
             </div>
           );
         })}
+
+        {/* Feedback link */}
+        <div className="mt-10 border-t border-slate-800 pt-4">
+          <a
+            href={buildFeedbackHref(params.id)}
+            className="text-sm text-slate-500 hover:text-cyan-400 transition"
+          >
+            ✉ Send feedback
+          </a>
+        </div>
       </div>
     </main>
   );
