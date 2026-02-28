@@ -134,3 +134,10 @@ CREATE TABLE IF NOT EXISTS user_rate_limits (
 
 CREATE INDEX IF NOT EXISTS idx_user_rate_limits_created_at ON user_rate_limits (created_at);
 CREATE INDEX IF NOT EXISTS idx_user_rate_limits_user_created_at ON user_rate_limits (user_id, created_at);
+
+-- Phase P3.1: Stripe Subscriptions
+ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS plan TEXT NOT NULL DEFAULT 'free';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS plan_status TEXT NOT NULL DEFAULT 'inactive';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS current_period_end TIMESTAMPTZ;

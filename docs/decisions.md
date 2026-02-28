@@ -164,5 +164,20 @@
 - `/app/verify/page.tsx`: server-side session gate via `cookies()` + `sessions` table query. Unauthenticated users are redirected to `/login`. `betaKey` prop fully removed.
 - `docs/beta-ops.md`: rewritten for P2.2; end-user flow is now signup to login to `/verify`. `x-proofmode-key` is admin-only.
 - Decision: return 404 (not 403) on ownership mismatch to avoid leaking resource existence.
+- 
+## Phase P3.1 - Stripe Subscriptions v1 (Pro plan + webhook + plan-aware caps)
+
+- Stripe SDK initialized server-side in `apps/web/lib/stripe.ts`; exported as singleton `stripe`. Never imported client-side.
+- - `getPlanFromSubscription(subscription)`: maps Stripe price ID to `"pro"` | `"free"` via `STRIPE_PRICE_ID_PRO` env var.
+  - - `mapSubscriptionStatus(status)`: maps Stripe subscription status to internal `plan_status` enum.
+    - - `infra/db/schema.sql`: 5 new columns on `users` — `stripe_customer_id TEXT`, `stripe_subscription_id TEXT`, `plan TEXT DEFAULT 'free'`, `plan_status TEXT DEFAULT 'inactive'`, `current_period_end TIMESTAMPTZ`. All idempotent `ADD COLUMN IF NOT EXISTS`.
+      - - `POST /api/billing/checkout`: requires session; creates Stripe customer if missing; creates checkout session for `STRIPE_PRICE_ID_PRO`; returns `{ url }`. Success → `/account?success=1`, cancel → `/account?canceled=1`.
+        - - `POST /api/billing/portal`: requires session + existing `stripe_customer_id`; creates Stripe billing portal session; returns `{ url }`.
+          - - `POST /api/stripe/webhook`: verifies `stripe-signature` header; handles `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`. Always returns 200 unless signature invalid (Stripe retry safety). Updates `users` table on every event.
+            - - `/api/verify` plan-aware gating: `checkUserDailyLimit()` now fetches `plan` + `plan_status` from `users`; limit = 200 if `plan_status === "active" && plan === "pro"`, else 10. IP/global limits unchanged. Admin routes untouched.
+              - - `/account` server component: reads session cookie; queries `users` for email, plan, plan_status, current_period_end; shows plan badge; conditionally renders Upgrade or Manage Billing button; redirects to `/signin` if unauthenticated.
+                - - Decision: webhook always returns 200 on handler errors (only 400 on bad signature) to prevent Stripe from disabling the endpoint on transient DB errors.
+                  - - Decision: free cap reduced from 50 to 10 to encourage upgrade. Pro cap set to 200.
+                    - - Required env vars: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID_PRO`, `NEXT_PUBLIC_APP_URL`.
 - Decision: `DAILY_USER_LIMIT = 50` hardcoded for now; will move to env var in a future phase.
 - Decision: IP limits (25/IP/day, 500 global/day) remain alongside user limits for defense-in-depth.
