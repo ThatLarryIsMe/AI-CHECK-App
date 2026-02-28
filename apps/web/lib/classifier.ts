@@ -1,10 +1,13 @@
 import { z } from "zod";
 import { callLLM } from "./llm";
 
+// Maps LLM raw classification keys to ClaimStatus values defined in
+// @proofmode/core ClaimSchema: z.enum(["supported", "mixed", "unsupported"])
+// DO NOT add new values here without updating packages/core/src/schema.ts first.
 const LLM_CLASSIFICATION_MAP = {
-    supported: "supported",
-    refuted: "unsupported",
-    not_enough_info: "mixed",
+  supported: "supported",
+  refuted: "unsupported",
+  not_enough_info: "mixed",
 } as const;
 
 type LLMClassification = keyof typeof LLM_CLASSIFICATION_MAP;
@@ -23,25 +26,25 @@ Return ONLY valid JSON: {"classification": "supported"|"refuted"|"not_enough_inf
 confidence is 0 to 1. No prose outside the JSON.`;
 
 const ClassificationSchema = z.object({
-    classification: z.enum(["supported", "refuted", "not_enough_info"]),
-    confidence: z.number().min(0).max(1),
+  classification: z.enum(["supported", "refuted", "not_enough_info"]),
+  confidence: z.number().min(0).max(1),
 });
 
 export interface ClassificationResult {
-    status: ClaimStatus;
-    confidence: number;
-    llmClassification: LLMClassification;
+  status: ClaimStatus;
+  confidence: number;
+  llmClassification: LLMClassification;
 }
 
 export async function classifyClaim(
-    claim: string
-  ): Promise<ClassificationResult> {
-    const raw = await callLLM(
-      SYSTEM_PROMPT,
-          `Classify this claim: "${claim}"`
-        );
-    const parsed = ClassificationSchema.parse(raw);
-    const llmClassification = parsed.classification;
-    const status = LLM_CLASSIFICATION_MAP[llmClassification];
-    return { status, confidence: parsed.confidence, llmClassification };
+  claim: string
+): Promise<ClassificationResult> {
+  const raw = await callLLM(
+    SYSTEM_PROMPT,
+    `Classify this claim: "${claim}"`
+  );
+  const parsed = ClassificationSchema.parse(raw);
+  const llmClassification = parsed.classification;
+  const status = LLM_CLASSIFICATION_MAP[llmClassification];
+  return { status, confidence: parsed.confidence, llmClassification };
 }
