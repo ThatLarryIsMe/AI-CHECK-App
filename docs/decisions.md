@@ -61,3 +61,12 @@
 - Export v2: server-side route upgraded with Summary table (total/supported/mixed/unsupported/avgConfidence), Method & Limitations block, Disclaimer
 - Error UX upgraded to bordered error card with dismiss button; pack-load errors include Retry button
 - Root `decisions.md` removed; `docs/decisions.md` is the single source of truth (append-only)
+
+## Phase I — Positioning & Launch Readiness
+- Repositioned landing copy around structured verification for professional knowledge users
+- Updated homepage messaging to emphasize conservative claim assessment and shareable reporting outputs
+- Added `/trust` page with sober definitions for Supported/Mixed/Unsupported and explicit LLM-only limitation disclosure
+- Documented data retention behavior: verification jobs and evidence packs are stored in the database
+- Added forward-looking retrieval statement: web retrieval layer planned in a future release
+- Rewrote root README with investor-ready product summary, architecture diagram, stack, guardrails, env vars, setup, schema, and roadmap
+- Added footer metadata on landing page with version `v0.3.0-beta` and trust page link
