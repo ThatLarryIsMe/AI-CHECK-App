@@ -97,3 +97,14 @@ CREATE TABLE IF NOT EXISTS job_metrics (
 
 CREATE INDEX IF NOT EXISTS idx_job_metrics_created_at ON job_metrics (created_at);
 CREATE INDEX IF NOT EXISTS idx_job_metrics_job_id ON job_metrics (job_id);
+
+
+-- Phase P1: Cost Controls + Abuse Guard
+CREATE TABLE IF NOT EXISTS rate_limits (
+  id SERIAL PRIMARY KEY,
+  ip TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_rate_limits_created_at ON rate_limits (created_at);
+CREATE INDEX IF NOT EXISTS idx_rate_limits_ip_created_at ON rate_limits (ip, created_at);

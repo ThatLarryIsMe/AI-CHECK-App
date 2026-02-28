@@ -127,3 +127,15 @@
 - Updated Roadmap table to reflect all completed phases (J through N4) and mark Phase O as next.
 - Added `**v0.3.2**` version marker to README header.
 - Decision: README must be updated at end of each Phase N cycle to stay current with prod state.
+
+
+## Phase P1 — Cost Controls + Abuse Guard
+- Add daily cost ceilings (25/IP, 500 global) to protect LLM and retrieval spend.
+- Added `rate_limits` table to `infra/db/schema.sql`: columns `id SERIAL`, `ip TEXT`, `created_at TIMESTAMPTZ`; indexed on `created_at` and `(ip, created_at)` for query performance.
+- Per-IP daily limit: 25 verifications per IP per 24-hour rolling window; returns 429 `{ error: "Daily per-IP limit reached." }` when exceeded.
+- Global daily limit: 500 verifications total per 24-hour rolling window; returns 429 `{ error: "Daily system capacity reached. Try tomorrow." }` when exceeded.
+- Each allowed request INSERTs a row into `rate_limits` before job creation — count is authoritative and durable.
+- Rate-limited attempts logged as `{ level: "warn", event: "rate_limited", ip }` structured JSON.
+- `GET /api/admin/health` now returns `rateLimitedToday` — count of rows in `rate_limits` created since UTC midnight.
+- Existing per-minute in-memory rate limiter (10/min/IP) unchanged and still fires first.
+- Normal verification flow is unaffected when limits are not exceeded.
