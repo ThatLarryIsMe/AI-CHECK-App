@@ -108,3 +108,19 @@ CREATE TABLE IF NOT EXISTS rate_limits (
 
 CREATE INDEX IF NOT EXISTS idx_rate_limits_created_at ON rate_limits (created_at);
 CREATE INDEX IF NOT EXISTS idx_rate_limits_ip_created_at ON rate_limits (ip, created_at);
+
+
+-- Phase P2.1: Auth v1 (Invite-only signup + sessions)
+-- Add password_hash to users (idempotent)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT;
+
+CREATE TABLE IF NOT EXISTS sessions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  token TEXT UNIQUE NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  expires_at TIMESTAMPTZ NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
