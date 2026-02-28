@@ -106,3 +106,11 @@
 - Updated `apps/web/app/api/packs/[id]/export.md/route.ts`: prepended `**ProofMode Version:** ${VERSION}` and `**Generated At:** ${now}` header block to exported markdown.
 - Decision: `version.ts` placed at monorepo root (not inside `apps/web`) so both the web app and any future packages can import from it without circular deps.
 - Tagged release `v0.3.1` and published GitHub Release summarizing Phase M stabilization and N1 observability baseline.
+- 
+## Phase N3 — Access Gate Hardening (v0.3.2)
+- Replaced string equality in `requireBetaKey()` with `timingSafeEqual` from Node `crypto` module — prevents timing-based key enumeration attacks.
+- Added explicit length-mismatch guard: runs a dummy `timingSafeEqual(aBuf, aBuf)` before returning `false` to prevent length leakage.
+- Gate is header-only: `x-proofmode-key` header is the sole accepted credential path. Query param key support is intentionally absent to prevent key leakage in server logs, proxy headers, and access logs.
+- `requireBetaKey()` returns typed `{ ok: true } | { ok: false; reason: string }` — callers receive structured rejection reason.
+- Decision: constant-time comparison is mandatory for any secret comparison in production; standard `===` is vulnerable to timing side-channels.
+- Bumped `VERSION` to `0.3.2` to reflect hardened gate release.
