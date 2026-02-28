@@ -46,6 +46,25 @@
 - **Quality Signals:** timeout rate (red if >5%), retrieval rate (evidence attached vs LLM-only)
 - **Weekly Summary Export:** pre-formatted plaintext block ready to copy into Slack/email
 
+---
+
+## Phase O4 — Global Nav Bar (2026-02-28)
+
+**Decision:** Add a persistent sticky navigation header to `apps/web/app/layout.tsx` so every page in the app shares a consistent top bar without any per-page changes.
+
+**Structure:**
+- Left: `ProofMode` wordmark ("Proof" in white, "Mode" in cyan) linking to `/`, with a version badge (`v{VERSION}`) sourced from the shared `version` constant
+- Right: three nav links — Verify (`/verify`), Trust (`/trust`), Admin (`/admin`)
+- `Admin` is intentionally muted (`text-slate-500`) to de-emphasise it as an ops-only route
+
+**Styling:** `sticky top-0 z-50 border-b border-slate-800 bg-slate-950/90 backdrop-blur-sm` — glass-morphism feel, stays above all page content on scroll.
+
+**Why:** Zero new files, zero new libraries. One layout edit surfaces navigation on all existing and future pages. The nav also acts as a persistent version indicator across the app.
+
+**Files changed:** `apps/web/app/layout.tsx` (+41 lines, -4 lines). `decisions.md` (updated).
+
+---
+
 **Auto-refresh:** Polls both endpoints every 60 seconds while the report is in `ready` state; manual ↺ Refresh button also available.
 
 **Why:** The two admin API routes already existed and returned all the ops data needed. A zero-dependency client page was the minimal path to surfacing this data for weekly reviews.
