@@ -67,6 +67,7 @@ export async function POST(request: NextRequest) {
   void (async () => {
     const startTime = Date.now();
     let telemetry: VerificationTelemetry | null = null;
+    let llmTimedOut = false;
     await markProcessing(jobId);
     try {
       const pack = await runVerification(text, jobId, {
@@ -78,12 +79,25 @@ export async function POST(request: NextRequest) {
       const packId = await savePack(jobId, pack.engineVersion ?? "1.0.0-lite", pack);
       await markComplete(jobId, packId);
       const durationMs = telemetry?.totalDurationMs ?? Date.now() - startTime;
-      await insertJobMetrics({
-        jobId,
-        durationMs,
-        llmTimeout: false,
-        retrievalUsed: (telemetry?.retrievalDurationMs ?? 0) > 0,
-      }).catch(() => {});
+      // retrieval_used = true if any evidence was returned
+      const retrievalUsed = (telemetry?.evidenceCount ?? 0) > 0;
+      try {
+        await insertJobMetrics({
+          jobId,
+          durationMs,
+          llmTimeout: false,
+          retrievalUsed,
+        });
+      } catch (metricsErr) {
+        console.error(
+          JSON.stringify({
+            level: "error",
+            event: "job_metrics_insert_failed",
+            jobId,
+            error: metricsErr instanceof Error ? metricsErr.message : String(metricsErr),
+          })
+        );
+      }
       console.log(
         JSON.stringify({
           level: "info",
@@ -102,15 +116,27 @@ export async function POST(request: NextRequest) {
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown verify failure";
       const errorType = (error as { type?: string })?.type ?? "UNKNOWN_ERROR";
-      const isLlmTimeout = message.includes("timeout") || errorType === "LLM_TIMEOUT";
+      llmTimedOut = message.toLowerCase().includes("timeout") || errorType === "LLM_TIMEOUT";
       const durationMs = telemetry?.totalDurationMs ?? Date.now() - startTime;
+      const retrievalUsed = (telemetry?.evidenceCount ?? 0) > 0;
       await markFailed(jobId, message);
-      await insertJobMetrics({
-        jobId,
-        durationMs,
-        llmTimeout: isLlmTimeout,
-        retrievalUsed: (telemetry?.retrievalDurationMs ?? 0) > 0,
-      }).catch(() => {});
+      try {
+        await insertJobMetrics({
+          jobId,
+          durationMs,
+          llmTimeout: llmTimedOut,
+          retrievalUsed,
+        });
+      } catch (metricsErr) {
+        console.error(
+          JSON.stringify({
+            level: "error",
+            event: "job_metrics_insert_failed",
+            jobId,
+            error: metricsErr instanceof Error ? metricsErr.message : String(metricsErr),
+          })
+        );
+      }
       console.error(
         JSON.stringify({
           level: "error",
