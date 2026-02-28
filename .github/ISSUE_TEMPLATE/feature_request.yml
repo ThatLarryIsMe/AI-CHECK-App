@@ -1,0 +1,34 @@
+name: Feature request
+description: Suggest a product enhancement.
+title: "[Feature]: "
+labels:
+  - product
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user or operator problem are you trying to solve?
+    validations:
+      required: true
+  - type: textarea
+    id: who
+    attributes:
+      label: Who is affected?
+      description: Which user segment(s) benefit from this?
+      placeholder: beta tester, operator, reviewer, founder, etc.
+    validations:
+      required: true
+  - type: textarea
+    id: value
+    attributes:
+      label: Expected value
+      description: What measurable outcome should improve?
+    validations:
+      required: true
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Constraints / non-goals
+      description: Include limits, risks, and what should not change.
+      placeholder: no schema change, no new vendor, maintain fail-open retrieval...
