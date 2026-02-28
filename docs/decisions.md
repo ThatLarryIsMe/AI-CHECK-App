@@ -77,3 +77,11 @@
 - Retrieval limits: max 3 results per claim, claim extraction remains capped at max 5 claims.
 - Timeout guard: each Brave API call has a hard 5-second timeout.
 - BRAVE_API_KEY is optional and server-only; retrieval is disabled when not configured.
+
+## Phase K — Controlled Public Beta
+- Added invite-key access gate via `BETA_ACCESS_KEY` and shared `requireBetaKey()` helper in `apps/web/lib/access.ts`.
+- `/` remains public; `/verify` UI now shows an invite-only beta message when key is missing or invalid.
+- `POST /api/verify` is hard-gated before job creation/engine execution; unauthorized requests return 403 with standard invite-only message.
+- Added protected `GET /api/admin/stats` route for aggregate metrics only (`total_jobs`, `total_packs`, `total_waitlist_signups`, `last_24h_jobs`, `avg_claims_per_pack`) with no PII.
+- Expanded structured telemetry in verify flow and engine logs with: `jobId`, `totalDurationMs`, `llmDurationMs`, `retrievalDurationMs`, `claimsCount`, `evidenceCount`, `engineVersion`, `inputLength`, and `errorType`.
+- Updated deploy docs and environment examples to include `BETA_ACCESS_KEY` and Vercel deployment + smoke test checklist.
