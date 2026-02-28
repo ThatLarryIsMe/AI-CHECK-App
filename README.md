@@ -87,3 +87,18 @@ Deploy target: **Vercel**.
 - Rate limit is active on `/api/verify` (10 requests/min/IP).
 - Input cap is active (5,000 characters).
 - Upstream timeouts are active for model and retrieval calls.
+
+## Contributing
+
+- Open issues for bugs, product requests, or ops concerns in GitHub Issues.
+- Use the provided issue templates under `.github/ISSUE_TEMPLATE/`.
+- Suggested labels for triage:
+  - `bug`
+  - `product`
+  - `ops`
+- Local development:
+
+```bash
+pnpm install
+pnpm dev
+```
