@@ -1,7 +1,7 @@
 "use client";
 import { FormEvent, useEffect, useState } from "react";
 
-const VERSION = "0.1.0";
+import { VERSION } from "@/../../version";
 
 interface StatsData {
   total_jobs: number;
