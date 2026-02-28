@@ -1,8 +1,8 @@
 "use client";
-
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { VERSION } from "@/../../version";
 
 const HISTORY_KEY = "proofmode_history";
 
@@ -30,6 +30,14 @@ function saveToHistory(packId: string, snippet: string) {
   localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
 }
 
+function buildFeedbackHref(): string {
+  const subject = encodeURIComponent("ProofMode Beta Feedback");
+  const body = encodeURIComponent(
+    `ProofMode Version: ${VERSION}\nPage URL: ${typeof window !== "undefined" ? window.location.href : "/verify"}\n\nWhat did you try?\n\nWhat did you expect?\n\nWhat happened?\n\nAnything confusing?\n`
+  );
+  return `mailto:feedback@proofmode.ai?subject=${subject}&body=${body}`;
+}
+
 export function VerifyClient({ betaKey }: { betaKey: string | null }) {
   const router = useRouter();
   const [text, setText] = useState("");
@@ -41,7 +49,7 @@ export function VerifyClient({ betaKey }: { betaKey: string | null }) {
     setHistory(loadHistory());
   }, []);
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+  async function onSubmit(event: FormEvent) {
     event.preventDefault();
     setLoading(true);
     setError(null);
@@ -52,7 +60,6 @@ export function VerifyClient({ betaKey }: { betaKey: string | null }) {
       if (betaKey) {
         headers["x-proofmode-key"] = betaKey;
       }
-
       const response = await fetch("/api/verify", {
         method: "POST",
         headers,
@@ -60,7 +67,7 @@ export function VerifyClient({ betaKey }: { betaKey: string | null }) {
       });
       if (!response.ok) {
         const data = (await response.json().catch(() => ({}))) as { error?: string };
-        throw new Error(data.error ?? `Server error ${response.status} — please try again.`);
+        throw new Error(data.error ?? `Server error ${response.status} \u2014 please try again.`);
       }
       const data = (await response.json()) as { jobId: string };
       let packId = data.jobId;
@@ -80,7 +87,7 @@ export function VerifyClient({ betaKey }: { betaKey: string | null }) {
       setError(
         submitError instanceof Error
           ? submitError.message
-          : "Unexpected error — please try again."
+          : "Unexpected error \u2014 please try again."
       );
     } finally {
       setLoading(false);
@@ -88,14 +95,15 @@ export function VerifyClient({ betaKey }: { betaKey: string | null }) {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-4xl flex-col px-6 py-12 text-slate-100">
-      <h1 className="mb-2 text-3xl font-semibold text-cyan-300">Verify text</h1>
-      <p className="mb-6 text-sm text-slate-400">
-        Paste any text — each claim will be classified and scored.
-      </p>
-      <div className="flex gap-8">
-        <section className="flex-1">
-          <form className="space-y-4" onSubmit={onSubmit}>
+    <main className="flex min-h-screen gap-8 bg-slate-950 p-8 text-slate-100">
+      <div className="flex-1">
+        <section>
+          <h1 className="text-3xl font-bold">Verify text</h1>
+          <p className="mt-2 text-slate-400">
+            Paste any text \u2014 each claim will be classified and scored.
+          </p>
+
+          <form onSubmit={onSubmit} className="mt-6 space-y-4">
             <textarea
               className="h-48 w-full rounded-lg border border-slate-700 bg-slate-900 p-4 focus:outline-none focus:ring-2 focus:ring-cyan-500"
               value={text}
@@ -109,13 +117,14 @@ export function VerifyClient({ betaKey }: { betaKey: string | null }) {
                 disabled={loading}
                 className="rounded bg-cyan-500 px-5 py-2 font-medium text-slate-950 transition hover:bg-cyan-400 disabled:opacity-50"
               >
-                {loading ? "Submitting…" : "Run verification"}
+                {loading ? "Submitting\u2026" : "Run verification"}
               </button>
               {loading && (
-                <span className="animate-pulse text-sm text-slate-400">Sending to engine…</span>
+                <span className="animate-pulse text-sm text-slate-400">Sending to engine\u2026</span>
               )}
             </div>
           </form>
+
           {error ? (
             <div className="mt-4 rounded-lg border border-red-700 bg-red-950/40 p-4">
               <p className="font-medium text-red-400">Something went wrong</p>
@@ -128,28 +137,39 @@ export function VerifyClient({ betaKey }: { betaKey: string | null }) {
               </button>
             </div>
           ) : null}
+
+          {/* Feedback link */}
+          <div className="mt-8 border-t border-slate-800 pt-4">
+            <a
+              href={buildFeedbackHref()}
+              className="text-sm text-slate-500 hover:text-cyan-400 transition"
+            >
+              \u2709 Send feedback
+            </a>
+          </div>
         </section>
-        {history.length > 0 && (
-          <aside className="w-64 shrink-0">
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">
-              Recent verifications
-            </h2>
-            <ul className="space-y-2">
-              {history.map((entry) => (
-                <li key={entry.packId}>
-                  <Link
-                    href={`/packs/${entry.packId}`}
-                    className="block rounded-lg bg-slate-800 px-3 py-2 transition hover:bg-slate-700"
-                  >
-                    <p className="text-xs text-slate-400">{new Date(entry.ts).toLocaleString()}</p>
-                    <p className="mt-0.5 truncate text-sm text-slate-200">{entry.snippet}</p>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </aside>
-        )}
       </div>
+
+      {history.length > 0 && (
+        <aside className="w-64 shrink-0">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">
+            Recent verifications
+          </h2>
+          <ul className="space-y-2">
+            {history.map((entry) => (
+              <li key={entry.packId}>
+                <Link
+                  href={`/packs/${entry.packId}`}
+                  className="block rounded-lg bg-slate-800 px-3 py-2 transition hover:bg-slate-700"
+                >
+                  <p className="text-xs text-slate-400">{new Date(entry.ts).toLocaleString()}</p>
+                  <p className="mt-0.5 truncate text-sm text-slate-200">{entry.snippet}</p>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </aside>
+      )}
     </main>
   );
 }
