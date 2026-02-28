@@ -1,12 +1,14 @@
 # ProofMode
 
+**v0.3.2** — Claim-level verification for professional teams.
+
 ProofMode is a claim-level verification product for professional teams that need structured, auditable assessments of written material. Users submit text, the engine extracts factual claims, classifies each claim with conservative reasoning, and produces an evidence pack designed for downstream review, export, and client-facing reporting.
 
 ## Architecture
 
-```text
+```
 +------------------------+
-|      Next.js 14 UI     |
+|     Next.js 14 UI      |
 |  /, /verify, /packs/*  |
 +-----------+------------+
             |
@@ -16,11 +18,21 @@ ProofMode is a claim-level verification product for professional teams that need
 | verify, waitlist, pack |
 +-----------+------------+
             |
-            v
-+------------------------+        +-------------------------+
-| OpenAI gpt-4o-mini     |        | Postgres (Neon)         |
-| extract + classify     |        | jobs, packs, waitlist   |
-+------------------------+        +-------------------------+
+         +--+--+
+         |     |
+         v     v
++---------------+  +-------------------------+
+| OpenAI        |  | Postgres (Neon)         |
+| gpt-4o-mini   |  | jobs, packs, waitlist,  |
+| extract +     |  | job_metrics             |
+| classify      |  +-------------------------+
++---------------+
+         |
+         v (optional)
++------------------------+
+|   Brave Search API     |
+|   retrieval layer      |
++------------------------+
 ```
 
 ## Stack
@@ -28,6 +40,7 @@ ProofMode is a claim-level verification product for professional teams that need
 - Next.js 14
 - Postgres (Neon)
 - OpenAI `gpt-4o-mini`
+- Brave Search API (optional — retrieval layer)
 
 ## Guardrails
 
@@ -35,16 +48,23 @@ ProofMode is a claim-level verification product for professional teams that need
 - Input length limit: 5,000 characters
 - Rate limiting: 10 requests/minute per IP on verify endpoint
 - Per-claim fallback: claim classification failures degrade to safe fallback output instead of failing the full pack
+- Access gate: `x-proofmode-key` header required on all protected routes (header-only; query param not supported)
+- Constant-time key comparison via `crypto.timingSafeEqual` (prevents timing-based key enumeration)
 
 ## Environment variables
 
-- `DATABASE_URL`
-- `OPENAI_API_KEY`
-- `ENGINE_VERSION`
+| Variable | Required | Description |
+|---|---|---|
+| `DATABASE_URL` | Yes | Neon Postgres connection string |
+| `OPENAI_API_KEY` | Yes | OpenAI API key |
+| `BETA_ACCESS_KEY` | Yes | Invite-only beta access key (`x-proofmode-key` header) |
+| `BRAVE_API_KEY` | No | Enables Brave Search retrieval layer |
+
+> Note: `ENGINE_VERSION` is no longer an environment variable. Version is managed via `version.ts` at the repo root.
 
 ## Run locally
 
-```bash
+```
 pnpm install
 pnpm dev
 ```
@@ -53,10 +73,20 @@ pnpm dev
 
 Run `infra/db/schema.sql` in the Neon SQL editor before using persistence-backed routes.
 
+Tables: `jobs`, `packs`, `waitlist_signups`, `job_metrics`
+
 ## Roadmap
 
-- Phase J: retrieval layer
-- Phase K: authentication + team workspaces
+| Phase | Status | Summary |
+|---|---|---|
+| J | ✅ Done | Brave Search retrieval layer (optional, fail-open) |
+| K | ✅ Done | Controlled public beta — `BETA_ACCESS_KEY` access gate |
+| M | ✅ Done | Schema fix, single source of truth, Vercel deploy fix, CI |
+| N1 | ✅ Done | Production observability — `job_metrics` + `/api/admin/health` |
+| N2 | ✅ Done | Versioning discipline — `version.ts` single source of truth |
+| N3 | ✅ Done | Access gate hardening — constant-time compare, header-only |
+| N4 | ✅ Done | README hardening — current with v0.3.2 state |
+| O | 🔲 Next | TBD |
 
 ## Deploy (Vercel)
 
@@ -64,11 +94,7 @@ Deploy target: **Vercel**.
 
 ### Required environment variables
 
-- `DATABASE_URL`
-- `OPENAI_API_KEY`
-- `BRAVE_API_KEY` (optional)
-- `ENGINE_VERSION`
-- `BETA_ACCESS_KEY`
+Set all variables from the table above in Vercel project settings. `BRAVE_API_KEY` is optional.
 
 ### Deployment steps
 
@@ -77,10 +103,11 @@ Deploy target: **Vercel**.
 3. Deploy the web app to Vercel.
 4. Run smoke tests:
    - Open `/`
-   - Open `/verify?key=...`
-   - Submit a verify request
+   - Open `/verify` (no key needed for UI load)
+   - Submit a verify request with `x-proofmode-key: <your-key>` header
    - Open the generated evidence pack
    - Export markdown from the pack page
+   - Confirm `GET /api/admin/health` returns `{ version, totalJobsToday, ... }` with valid key header
 
 ### Cost safety notes
 
@@ -92,13 +119,10 @@ Deploy target: **Vercel**.
 
 - Open issues for bugs, product requests, or ops concerns in GitHub Issues.
 - Use the provided issue templates under `.github/ISSUE_TEMPLATE/`.
-- Suggested labels for triage:
-  - `bug`
-  - `product`
-  - `ops`
+- Suggested labels for triage: `bug`, `product`, `ops`
 - Local development:
 
-```bash
+```
 pnpm install
 pnpm dev
 ```

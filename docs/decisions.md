@@ -114,3 +114,16 @@
 - `requireBetaKey()` returns typed `{ ok: true } | { ok: false; reason: string }` — callers receive structured rejection reason.
 - Decision: constant-time comparison is mandatory for any secret comparison in production; standard `===` is vulnerable to timing side-channels.
 - Bumped `VERSION` to `0.3.2` to reflect hardened gate release.
+
+
+## Phase N4 — README Hardening (v0.3.2)
+- Removed stale `ENGINE_VERSION` from environment variables table — version is now managed via `version.ts` at repo root.
+- Added `BETA_ACCESS_KEY` to environment variables table (was missing; required since Phase K).
+- Added `BRAVE_API_KEY` (optional) to environment variables table.
+- Converted env vars section from bullet list to table format for clarity.
+- Updated architecture diagram to include `job_metrics` in Postgres table list and Brave Search retrieval layer.
+- Added N3 guardrails to Guardrails section: header-only access gate and constant-time comparison.
+- Fixed smoke test step: was `Open /verify?key=...` (query param) — corrected to header-only instruction.
+- Updated Roadmap table to reflect all completed phases (J through N4) and mark Phase O as next.
+- Added `**v0.3.2**` version marker to README header.
+- Decision: README must be updated at end of each Phase N cycle to stay current with prod state.

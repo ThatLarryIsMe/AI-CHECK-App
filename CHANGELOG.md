@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - N1: `job_metrics` table migration and observability instrumentation on verify route
 - N2: `version.ts` single source of truth; version surfaced in UI footer, admin health response, and markdown export header
 - N3: Access gate hardening — constant-time key comparison via `timingSafeEqual`, header-only gate, structured rejection reason
+- - N4: README hardening — env vars table corrected (added `BETA_ACCESS_KEY`, `BRAVE_API_KEY`; removed stale `ENGINE_VERSION`), smoke test fixed (header-only), roadmap table updated, architecture diagram updated
 
 ## [1.0.0-lite] - 2025-01-01
 
