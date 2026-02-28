@@ -19,7 +19,7 @@ const DAILY_IP_LIMIT = 25;
 const DAILY_GLOBAL_LIMIT = 500;
 
 // Phase P2.2: Per-user daily cap
-const DAILY_USER_LIMIT = 50;
+// Phase P3.1: Per-user daily cap is now plan-aware (free=10, pro=200)
 
 function isRateLimited(ip: string): boolean {
   const now = Date.now();
@@ -65,22 +65,34 @@ async function checkDailyLimits(
   return { limited: false };
 }
 
-// Phase P2.2: per-user daily cap check
+// Phase P3.1: per-user daily cap check — plan-aware
 async function checkUserDailyLimit(
-  userId: string
-): Promise<{ limited: true; message: string } | { limited: false }> {
-  const since = new Date();
-  since.setUTCHours(since.getUTCHours() - 24);
+    userId: string
+  ): Promise<{ limited: true; message: string } | { limited: false }> {
+    const since = new Date();
+    since.setUTCHours(since.getUTCHours() - 24);
 
-  const result = await pool.query<{ count: string }>(
-    `SELECT COUNT(*) AS count FROM user_rate_limits WHERE user_id = $1 AND created_at >= $2`,
-    [userId, since.toISOString()]
-  );
-  const count = parseInt(result.rows[0]?.count ?? "0", 10);
-  if (count >= DAILY_USER_LIMIT) {
-    return { limited: true, message: "Daily user limit reached." };
-  }
-  return { limited: false };
+    // Fetch plan info for this user
+    const planResult = await pool.query<{ plan: string; plan_status: string }>(
+          `SELECT plan, plan_status FROM users WHERE id = $1`,
+          [userId]
+        );
+    const plan = planResult.rows[0]?.plan ?? "free";
+    const planStatus = planResult.rows[0]?.plan_status ?? "inactive";
+
+    // Phase P3.1: pro=200/day, free=10/day
+    const limit =
+          planStatus === "active" && plan === "pro" ? 200 : 10;
+
+    const result = await pool.query<{ count: string }>(
+          `SELECT COUNT(*) AS count FROM user_rate_limits WHERE user_id = $1 AND created_at >= $2`,
+          [userId, since.toISOString()]
+        );
+    const count = parseInt(result.rows[0]?.count ?? "0", 10);
+    if (count >= limit) {
+          return { limited: true, message: "Daily user limit reached." };
+    }
+    return { limited: false };
 }
 
 export async function POST(request: NextRequest) {
