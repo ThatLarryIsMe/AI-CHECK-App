@@ -84,3 +84,16 @@ END $$;
 ALTER TABLE packs
     ADD COLUMN IF NOT EXISTS engine_version TEXT NOT NULL DEFAULT '1.0.0-lite',
     ADD COLUMN IF NOT EXISTS pack_json JSONB NOT NULL DEFAULT '{}';
+
+
+-- Phase N1: Production Observability Baseline
+CREATE TABLE IF NOT EXISTS job_metrics (
+    job_id UUID REFERENCES jobs(id) ON DELETE CASCADE,
+    duration_ms INTEGER NOT NULL,
+    llm_timeout BOOLEAN NOT NULL DEFAULT FALSE,
+    retrieval_used BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_job_metrics_created_at ON job_metrics (created_at);
+CREATE INDEX IF NOT EXISTS idx_job_metrics_job_id ON job_metrics (job_id);
