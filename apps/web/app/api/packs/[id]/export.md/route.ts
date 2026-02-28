@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPack } from "@/lib/jobs-db";
+import { VERSION } from "@/../../version";
 
 export async function GET(
   _: NextRequest,
@@ -28,6 +29,11 @@ export async function GET(
   // Build Markdown v2 evidence pack
   const lines: string[] = [
     `# ProofMode AI — Evidence Pack`,
+    ``,
+    `**ProofMode Version:** ${VERSION}`,
+    `**Generated At:** ${now}`,
+    ``,
+    `---`,
     ``,
     `**Pack ID:** ${params.id}`,
     `**Engine Version:** ${pack.engineVersion ?? "llm-only-v1"}`,
@@ -89,6 +95,7 @@ export async function GET(
   lines.push(``);
 
   const markdown = lines.join("\n");
+
   return new NextResponse(markdown, {
     status: 200,
     headers: {

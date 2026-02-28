@@ -96,3 +96,13 @@
 - Admin health route requires `x-proofmode-key` header via `requireBetaKey()`. Returns 401 if key invalid or missing.
 - All aggregation metrics are 0-safe: returns zeroes if no job_metrics rows exist.
 - Decision: metrics stored in separate `job_metrics` table (not on jobs) to allow append-only observability without touching the core jobs schema.
+
+
+## Phase N2 — Versioning Discipline (v0.3.1)
+- Created `version.ts` at repo root as single source of truth: `export const VERSION = "0.3.1"`.
+- All version references now import `{ VERSION }` from `@/../../version`. No other hardcoded version strings remain.
+- Updated `apps/web/app/page.tsx` footer: replaced `"v0.3.0-beta"` literal with `v{VERSION}`.
+- Updated `apps/web/app/api/admin/health/route.ts`: added `version: VERSION` as first field in JSON response.
+- Updated `apps/web/app/api/packs/[id]/export.md/route.ts`: prepended `**ProofMode Version:** ${VERSION}` and `**Generated At:** ${now}` header block to exported markdown.
+- Decision: `version.ts` placed at monorepo root (not inside `apps/web`) so both the web app and any future packages can import from it without circular deps.
+- Tagged release `v0.3.1` and published GitHub Release summarizing Phase M stabilization and N1 observability baseline.

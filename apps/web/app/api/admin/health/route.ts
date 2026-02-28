@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireBetaKey } from "@/lib/access";
 import { pool } from "@/lib/db";
+import { VERSION } from "@/../../version";
 
 export async function GET(request: NextRequest) {
   // Require BETA_ACCESS_KEY header
@@ -53,6 +54,7 @@ export async function GET(request: NextRequest) {
         : 0;
 
     return NextResponse.json({
+      version: VERSION,
       totalJobsToday,
       avgDurationMs,
       timeoutRate,

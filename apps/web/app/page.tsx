@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
+import { VERSION } from "@/../../version";
 
 export default function Home() {
   const [email, setEmail] = useState("");
@@ -34,39 +35,34 @@ export default function Home() {
           Structured verification for professional knowledge.
         </h1>
         <p className="text-xl text-slate-300 max-w-3xl mb-8">
-          Turn any text into a claim-level assessment with transparent reasoning and exportable artifacts.
+          Turn any text into a claim-level assessment with transparent reasoning
+          and exportable artifacts.
         </p>
         <ul className="text-slate-200 text-left max-w-xl w-full space-y-3 mb-6">
-          <li>• Extracts factual claims automatically</li>
-          <li>• Classifies each claim conservatively</li>
-          <li>• Produces a shareable verification report</li>
+          <li>•&nbsp; Extracts factual claims automatically</li>
+          <li>•&nbsp; Classifies each claim conservatively</li>
+          <li>•&nbsp; Produces a shareable verification report</li>
         </ul>
         <p className="text-slate-400 mb-8">Built for analysts, consultants, and agencies.</p>
-        <div className="flex flex-col sm:flex-row gap-4">
-          <a
-            href="/verify"
-            className="px-6 py-3 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold rounded-lg transition"
-          >
+        <div className="flex gap-4">
+          <Link href="/verify" className="px-6 py-3 bg-cyan-500 text-slate-950 rounded-lg font-semibold hover:bg-cyan-400">
             Try the demo
-          </a>
-          <a
-            href="#waitlist"
-            className="px-6 py-3 border border-cyan-500 hover:bg-cyan-950 text-cyan-400 font-semibold rounded-lg transition"
-          >
+          </Link>
+          <a href="#waitlist" className="px-6 py-3 border border-slate-600 text-slate-300 rounded-lg hover:border-slate-400">
             Get early access
           </a>
         </div>
       </section>
 
-      <section id="waitlist" className="py-16 px-6 flex flex-col items-center">
-        <h2 className="text-3xl font-bold mb-4">Get early access</h2>
-        <p className="text-slate-400 mb-8 text-center max-w-md">
+      <section id="waitlist" className="px-6 py-16 bg-slate-900 text-center">
+        <h2 className="text-2xl font-bold mb-4">Get early access</h2>
+        <p className="text-slate-400 max-w-xl mx-auto mb-8">
           We&apos;re rolling out to a small group first. Drop your email and we&apos;ll notify you when your spot opens.
         </p>
         {submitted ? (
-          <p className="text-cyan-400 font-semibold text-lg">You&apos;re on the list! We&apos;ll be in touch.</p>
+          <p className="text-cyan-400 font-semibold">You&apos;re on the list! We&apos;ll be in touch.</p>
         ) : (
-          <form onSubmit={handleWaitlist} className="flex flex-col sm:flex-row gap-3 w-full max-w-md">
+          <form onSubmit={handleWaitlist} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
             <input
               type="email"
               required
@@ -75,10 +71,7 @@ export default function Home() {
               onChange={(e) => setEmail(e.target.value)}
               className="flex-1 px-4 py-3 rounded-lg bg-slate-800 border border-slate-600 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
             />
-            <button
-              type="submit"
-              className="px-6 py-3 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold rounded-lg transition"
-            >
+            <button type="submit" className="px-6 py-3 bg-cyan-500 text-slate-950 rounded-lg font-semibold hover:bg-cyan-400">
               Notify me
             </button>
           </form>
@@ -86,11 +79,9 @@ export default function Home() {
         {error && <p className="text-red-400 mt-3">{error}</p>}
       </section>
 
-      <footer className="py-6 text-center text-slate-500 text-sm border-t border-slate-800">
-        <p>ProofMode v0.3.0-beta</p>
-        <Link href="/trust" className="text-cyan-400 hover:text-cyan-300 underline">
-          Trust & methodology
-        </Link>
+      <footer className="px-6 py-6 text-center text-slate-500 text-sm flex items-center justify-center gap-4">
+        <span>ProofMode v{VERSION}</span>
+        <Link href="/trust" className="hover:text-slate-300">&nbsp;Trust &amp; methodology</Link>
       </footer>
     </main>
   );
