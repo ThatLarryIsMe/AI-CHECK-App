@@ -8,6 +8,7 @@ export interface JobRecord {
   status: JobStatus;
   inputText: string | null;
   packId: string | null;
+  userId: string | null;
   error: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -17,14 +18,14 @@ export interface JobRecord {
 export async function createJob(inputText: string, userId?: string): Promise<JobRecord> {
   const id = crypto.randomUUID();
   const { rows } = await pool.query<JobRecord>(
-        `INSERT INTO jobs (id, user_id, status, input_text)
-            VALUES ($1, $3, 'queued', $2)
+    `INSERT INTO jobs (id, user_id, status, input_text)
+      VALUES ($1, $3, 'queued', $2)
       RETURNING id, status, input_text AS "inputText",
-                pack_id AS "packId", error,
+                pack_id AS "packId", user_id AS "userId", error,
                 created_at AS "createdAt",
                 updated_at AS "updatedAt",
                 completed_at AS "completedAt"`,
-        [id, inputText, userId ?? null]
+    [id, inputText, userId ?? null]
   );
   return rows[0];
 }
@@ -65,8 +66,8 @@ export async function insertJobMetrics(params: {
   const { jobId, durationMs, llmTimeout, retrievalUsed } = params;
   await pool.query(
     `INSERT INTO job_metrics (job_id, duration_ms, llm_timeout, retrieval_used)
-     VALUES ($1, $2, $3, $4)
-     ON CONFLICT (job_id) DO NOTHING`,
+      VALUES ($1, $2, $3, $4)
+      ON CONFLICT (job_id) DO NOTHING`,
     [jobId, durationMs, llmTimeout, retrievalUsed]
   );
 }
@@ -86,8 +87,10 @@ export async function savePack(
 
 export async function getJob(jobId: string): Promise<JobRecord | null> {
   const { rows } = await pool.query<JobRecord>(
-    `SELECT id, status, input_text AS "inputText", pack_id AS "packId", error,
-            created_at AS "createdAt", updated_at AS "updatedAt",
+    `SELECT id, status, input_text AS "inputText",
+            pack_id AS "packId", user_id AS "userId", error,
+            created_at AS "createdAt",
+            updated_at AS "updatedAt",
             completed_at AS "completedAt"
      FROM jobs WHERE id = $1`,
     [jobId]
@@ -101,6 +104,21 @@ export async function getPack(
   const { rows } = await pool.query<{ pack_json: EvidencePack }>(
     `SELECT pack_json FROM packs WHERE id = $1`,
     [packId]
+  );
+  return rows[0]?.pack_json ?? null;
+}
+
+// P2.2: ownership-aware pack fetch — returns null when pack/job not found or userId mismatch
+export async function getPackForUser(
+  packId: string,
+  userId: string
+): Promise<EvidencePack | null> {
+  const { rows } = await pool.query<{ pack_json: EvidencePack }>(
+    `SELECT p.pack_json
+     FROM packs p
+     JOIN jobs j ON j.id = p.job_id
+     WHERE p.id = $1 AND j.user_id = $2`,
+    [packId, userId]
   );
   return rows[0]?.pack_json ?? null;
 }

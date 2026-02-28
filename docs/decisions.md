@@ -139,3 +139,30 @@
 - `GET /api/admin/health` now returns `rateLimitedToday` — count of rows in `rate_limits` created since UTC midnight.
 - Existing per-minute in-memory rate limiter (10/min/IP) unchanged and still fires first.
 - Normal verification flow is unaffected when limits are not exceeded.
+
+
+## Phase P2.1 - Session Auth (Auth v1)
+- Added `password_hash` column to `users` and new `sessions` table to `infra/db/schema.sql`.
+- Created `@/lib/auth`: `scrypt` password helpers (no external deps) + session cookie read/write utilities.
+- Cookie name: `pm_session`; 14-day expiry; `HttpOnly`, `SameSite=lax`, `Secure` in production.
+- `POST /api/auth/signup`: create user with hashed password + auto-login session.
+- `POST /api/auth/login`: verify credentials + set session cookie.
+- `POST /api/auth/logout`: clear session cookie.
+- `GET /api/verify` now requires valid session via `getUserFromRequest()`; stores `userId` on job row.
+- `createJob()` updated to accept optional `userId`; `jobs.user_id` is populated on every verify.
+- `/app/signup` and `/app/login` pages added.
+- `/app/verify/page.tsx`: server-side `requireBetaKey` removed; gate is now client-side only.
+
+## Phase P2.2 - Ownership + Per-user Caps + Remove Beta-Key UX
+- `user_rate_limits` table added to `infra/db/schema.sql`: `id SERIAL`, `user_id UUID FK`, `created_at TIMESTAMPTZ`; indexed on `created_at` and `(user_id, created_at)`.
+- `getJob()` updated to return `userId` field (was missing from SELECT).
+- `getPackForUser(packId, userId)` added to `jobs-db.ts`: joins `packs` to `jobs` and enforces `jobs.user_id = userId`; returns null on mismatch.
+- `GET /api/jobs/[id]`: now requires session; returns 404 if job not found or user_id does not match current user (no 403, avoids leaking existence).
+- `GET /api/packs/[id]`: now requires session; uses `getPackForUser` - returns 404 if pack not found or belongs to a different user.
+- `POST /api/verify`: per-user daily cap at 50 verifications/24h/user via `user_rate_limits` table; returns 429 `{ error: "Daily user limit reached." }` when exceeded.
+- `verify-client.tsx`: `betaKey` prop removed; `x-proofmode-key` header no longer sent from UI. On 401, client redirects to `/login`.
+- `/app/verify/page.tsx`: server-side session gate via `cookies()` + `sessions` table query. Unauthenticated users are redirected to `/login`. `betaKey` prop fully removed.
+- `docs/beta-ops.md`: rewritten for P2.2; end-user flow is now signup to login to `/verify`. `x-proofmode-key` is admin-only.
+- Decision: return 404 (not 403) on ownership mismatch to avoid leaking resource existence.
+- Decision: `DAILY_USER_LIMIT = 50` hardcoded for now; will move to env var in a future phase.
+- Decision: IP limits (25/IP/day, 500 global/day) remain alongside user limits for defense-in-depth.

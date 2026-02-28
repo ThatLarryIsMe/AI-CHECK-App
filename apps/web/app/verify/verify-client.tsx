@@ -1,8 +1,9 @@
 "use client";
-
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+
+// P2.2: betaKey prop removed — end users authenticate via session, not x-proofmode-key header.
 
 const HISTORY_KEY = "proofmode_history";
 
@@ -30,7 +31,7 @@ function saveToHistory(packId: string, snippet: string) {
   localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
 }
 
-export function VerifyClient({ betaKey }: { betaKey: string | null }) {
+export function VerifyClient() {
   const router = useRouter();
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
@@ -41,27 +42,29 @@ export function VerifyClient({ betaKey }: { betaKey: string | null }) {
     setHistory(loadHistory());
   }, []);
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+  async function onSubmit(event: FormEvent) {
     event.preventDefault();
     setLoading(true);
     setError(null);
     try {
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      };
-      if (betaKey) {
-        headers["x-proofmode-key"] = betaKey;
-      }
-
+      // P2.2: session cookie is sent automatically; no x-proofmode-key header needed.
       const response = await fetch("/api/verify", {
         method: "POST",
-        headers,
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text }),
       });
+
+      if (response.status === 401) {
+        // Session expired — redirect to login
+        router.push("/login");
+        return;
+      }
+
       if (!response.ok) {
         const data = (await response.json().catch(() => ({}))) as { error?: string };
         throw new Error(data.error ?? `Server error ${response.status} — please try again.`);
       }
+
       const data = (await response.json()) as { jobId: string };
       let packId = data.jobId;
       try {
@@ -88,14 +91,14 @@ export function VerifyClient({ betaKey }: { betaKey: string | null }) {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-4xl flex-col px-6 py-12 text-slate-100">
-      <h1 className="mb-2 text-3xl font-semibold text-cyan-300">Verify text</h1>
-      <p className="mb-6 text-sm text-slate-400">
-        Paste any text — each claim will be classified and scored.
-      </p>
-      <div className="flex gap-8">
+    <main className="flex min-h-screen flex-col items-center bg-slate-950 px-4 py-16 text-slate-100">
+      <div className="flex w-full max-w-4xl gap-8">
         <section className="flex-1">
-          <form className="space-y-4" onSubmit={onSubmit}>
+          <h1 className="mb-2 text-2xl font-bold text-white">Verify text</h1>
+          <p className="mb-6 text-slate-400">
+            Paste any text — each claim will be classified and scored.
+          </p>
+          <form onSubmit={onSubmit} className="space-y-4">
             <textarea
               className="h-48 w-full rounded-lg border border-slate-700 bg-slate-900 p-4 focus:outline-none focus:ring-2 focus:ring-cyan-500"
               value={text}

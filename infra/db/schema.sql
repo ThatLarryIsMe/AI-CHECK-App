@@ -124,3 +124,13 @@ CREATE TABLE IF NOT EXISTS sessions (
 
 CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
+
+-- Phase P2.2: Per-user daily caps
+CREATE TABLE IF NOT EXISTS user_rate_limits (
+    id SERIAL PRIMARY KEY,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_rate_limits_created_at ON user_rate_limits (created_at);
+CREATE INDEX IF NOT EXISTS idx_user_rate_limits_user_created_at ON user_rate_limits (user_id, created_at);

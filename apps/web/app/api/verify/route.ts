@@ -18,6 +18,9 @@ const RATE_LIMIT_WINDOW_MS = 60_000;
 const DAILY_IP_LIMIT = 25;
 const DAILY_GLOBAL_LIMIT = 500;
 
+// Phase P2.2: Per-user daily cap
+const DAILY_USER_LIMIT = 50;
+
 function isRateLimited(ip: string): boolean {
   const now = Date.now();
   const entry = rateLimitMap.get(ip);
@@ -59,6 +62,24 @@ async function checkDailyLimits(
     };
   }
 
+  return { limited: false };
+}
+
+// Phase P2.2: per-user daily cap check
+async function checkUserDailyLimit(
+  userId: string
+): Promise<{ limited: true; message: string } | { limited: false }> {
+  const since = new Date();
+  since.setUTCHours(since.getUTCHours() - 24);
+
+  const result = await pool.query<{ count: string }>(
+    `SELECT COUNT(*) AS count FROM user_rate_limits WHERE user_id = $1 AND created_at >= $2`,
+    [userId, since.toISOString()]
+  );
+  const count = parseInt(result.rows[0]?.count ?? "0", 10);
+  if (count >= DAILY_USER_LIMIT) {
+    return { limited: true, message: "Daily user limit reached." };
+  }
   return { limited: false };
 }
 
@@ -109,8 +130,27 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: dailyCheck.message }, { status: 429 });
   }
 
-  // Record this attempt in rate_limits
+  // Phase P2.2: per-user daily cap
+  const userCapCheck = await checkUserDailyLimit(sessionUser.userId);
+  if (userCapCheck.limited) {
+    console.warn(
+      JSON.stringify({
+        level: "warn",
+        event: "user_rate_limited",
+        userId: sessionUser.userId,
+        ip,
+        timestamp: new Date().toISOString(),
+      })
+    );
+    return NextResponse.json({ error: userCapCheck.message }, { status: 429 });
+  }
+
+  // Record this attempt in rate_limits (IP)
   await pool.query(`INSERT INTO rate_limits (ip) VALUES ($1)`, [ip]);
+  // Record this attempt in user_rate_limits (per-user)
+  await pool.query(`INSERT INTO user_rate_limits (user_id) VALUES ($1)`, [
+    sessionUser.userId,
+  ]);
 
   const body = await request.json().catch(() => null);
   const text = typeof body?.text === "string" ? body.text.trim() : "";
@@ -126,7 +166,6 @@ export async function POST(request: NextRequest) {
     const startTime = Date.now();
     let telemetry: VerificationTelemetry | null = null;
     let llmTimedOut = false;
-
     await markProcessing(jobId);
     try {
       const pack = await runVerification(text, jobId, {
@@ -134,35 +173,23 @@ export async function POST(request: NextRequest) {
           telemetry = payload;
         },
       });
-
       const { savePack } = await import("@/lib/jobs-db");
       const packId = await savePack(jobId, pack.engineVersion ?? "1.0.0-lite", pack);
       await markComplete(jobId, packId);
-
       const durationMs = telemetry?.totalDurationMs ?? Date.now() - startTime;
       const retrievalUsed = (telemetry?.evidenceCount ?? 0) > 0;
-
       try {
-        await insertJobMetrics({
-          jobId,
-          durationMs,
-          llmTimeout: false,
-          retrievalUsed,
-        });
+        await insertJobMetrics({ jobId, durationMs, llmTimeout: false, retrievalUsed });
       } catch (metricsErr) {
         console.error(
           JSON.stringify({
             level: "error",
             event: "job_metrics_insert_failed",
             jobId,
-            error:
-              metricsErr instanceof Error
-                ? metricsErr.message
-                : String(metricsErr),
+            error: metricsErr instanceof Error ? metricsErr.message : String(metricsErr),
           })
         );
       }
-
       console.log(
         JSON.stringify({
           level: "info",
@@ -180,40 +207,25 @@ export async function POST(request: NextRequest) {
         })
       );
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Unknown verify failure";
-      const errorType =
-        (error as { type?: string })?.type ?? "UNKNOWN_ERROR";
+      const message = error instanceof Error ? error.message : "Unknown verify failure";
+      const errorType = (error as { type?: string })?.type ?? "UNKNOWN_ERROR";
       llmTimedOut =
-        message.toLowerCase().includes("timeout") ||
-        errorType === "LLM_TIMEOUT";
-
+        message.toLowerCase().includes("timeout") || errorType === "LLM_TIMEOUT";
       const durationMs = telemetry?.totalDurationMs ?? Date.now() - startTime;
       const retrievalUsed = (telemetry?.evidenceCount ?? 0) > 0;
-
       await markFailed(jobId, message);
-
       try {
-        await insertJobMetrics({
-          jobId,
-          durationMs,
-          llmTimeout: llmTimedOut,
-          retrievalUsed,
-        });
+        await insertJobMetrics({ jobId, durationMs, llmTimeout: llmTimedOut, retrievalUsed });
       } catch (metricsErr) {
         console.error(
           JSON.stringify({
             level: "error",
             event: "job_metrics_insert_failed",
             jobId,
-            error:
-              metricsErr instanceof Error
-                ? metricsErr.message
-                : String(metricsErr),
+            error: metricsErr instanceof Error ? metricsErr.message : String(metricsErr),
           })
         );
       }
-
       console.error(
         JSON.stringify({
           level: "error",
