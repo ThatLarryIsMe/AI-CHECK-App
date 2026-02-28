@@ -18,12 +18,12 @@ export async function createJob(inputText: string): Promise<JobRecord> {
   const id = crypto.randomUUID();
   const { rows } = await pool.query<JobRecord>(
     `INSERT INTO jobs (id, status, input_text)
-     VALUES ($1, 'queued', $2)
-     RETURNING id, status, input_text AS "inputText",
-               pack_id AS "packId", error,
-               created_at AS "createdAt",
-               updated_at AS "updatedAt",
-               completed_at AS "completedAt"`,
+      VALUES ($1, 'queued', $2)
+      RETURNING id, status, input_text AS "inputText",
+                pack_id AS "packId", error,
+                created_at AS "createdAt",
+                updated_at AS "updatedAt",
+                completed_at AS "completedAt"`,
     [id, inputText]
   );
   return rows[0];
@@ -31,9 +31,7 @@ export async function createJob(inputText: string): Promise<JobRecord> {
 
 export async function markProcessing(jobId: string): Promise<void> {
   await pool.query(
-    `UPDATE jobs
-     SET status = 'processing', updated_at = NOW()
-     WHERE id = $1`,
+    `UPDATE jobs SET status = 'processing', updated_at = NOW() WHERE id = $1`,
     [jobId]
   );
 }
@@ -43,10 +41,7 @@ export async function markComplete(
   packId: string
 ): Promise<void> {
   await pool.query(
-    `UPDATE jobs
-     SET status = 'complete', pack_id = $2,
-         updated_at = NOW(), completed_at = NOW()
-     WHERE id = $1`,
+    `UPDATE jobs SET status = 'complete', pack_id = $2, updated_at = NOW(), completed_at = NOW() WHERE id = $1`,
     [jobId, packId]
   );
 }
@@ -56,11 +51,23 @@ export async function markFailed(
   error: string
 ): Promise<void> {
   await pool.query(
-    `UPDATE jobs
-     SET status = 'failed', error = $2,
-         updated_at = NOW(), completed_at = NOW()
-     WHERE id = $1`,
+    `UPDATE jobs SET status = 'failed', error = $2, updated_at = NOW(), completed_at = NOW() WHERE id = $1`,
     [jobId, error]
+  );
+}
+
+export async function insertJobMetrics(params: {
+  jobId: string;
+  durationMs: number;
+  llmTimeout: boolean;
+  retrievalUsed: boolean;
+}): Promise<void> {
+  const { jobId, durationMs, llmTimeout, retrievalUsed } = params;
+  await pool.query(
+    `INSERT INTO job_metrics (job_id, duration_ms, llm_timeout, retrieval_used)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (job_id) DO NOTHING`,
+    [jobId, durationMs, llmTimeout, retrievalUsed]
   );
 }
 
@@ -71,8 +78,7 @@ export async function savePack(
 ): Promise<string> {
   const id = crypto.randomUUID();
   await pool.query(
-    `INSERT INTO packs (id, job_id, engine_version, pack_json)
-     VALUES ($1, $2, $3, $4::jsonb)`,
+    `INSERT INTO packs (id, job_id, engine_version, pack_json) VALUES ($1, $2, $3, $4::jsonb)`,
     [id, jobId, engineVersion, JSON.stringify(pack)]
   );
   return id;
@@ -80,12 +86,8 @@ export async function savePack(
 
 export async function getJob(jobId: string): Promise<JobRecord | null> {
   const { rows } = await pool.query<JobRecord>(
-    `SELECT id, status,
-            input_text AS "inputText",
-            pack_id AS "packId",
-            error,
-            created_at AS "createdAt",
-            updated_at AS "updatedAt",
+    `SELECT id, status, input_text AS "inputText", pack_id AS "packId", error,
+            created_at AS "createdAt", updated_at AS "updatedAt",
             completed_at AS "completedAt"
      FROM jobs WHERE id = $1`,
     [jobId]
