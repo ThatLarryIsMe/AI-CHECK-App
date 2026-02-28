@@ -14,17 +14,17 @@ export interface JobRecord {
   completedAt: Date | null;
 }
 
-export async function createJob(inputText: string): Promise<JobRecord> {
+export async function createJob(inputText: string, userId?: string): Promise<JobRecord> {
   const id = crypto.randomUUID();
   const { rows } = await pool.query<JobRecord>(
-    `INSERT INTO jobs (id, status, input_text)
-      VALUES ($1, 'queued', $2)
+        `INSERT INTO jobs (id, user_id, status, input_text)
+            VALUES ($1, $3, 'queued', $2)
       RETURNING id, status, input_text AS "inputText",
                 pack_id AS "packId", error,
                 created_at AS "createdAt",
                 updated_at AS "updatedAt",
                 completed_at AS "completedAt"`,
-    [id, inputText]
+        [id, inputText, userId ?? null]
   );
   return rows[0];
 }
