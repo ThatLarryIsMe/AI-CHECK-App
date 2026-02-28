@@ -3,6 +3,8 @@ import { headers } from "next/headers";
 import { requireBetaKey } from "@/lib/access";
 import { VerifyClient } from "./verify-client";
 
+// N3: Beta key is read ONLY from the x-proofmode-key request header.
+// Query param (?key=...) support has been removed entirely.
 export default async function VerifyPage() {
   const headerStore = await headers();
   const reqLike = {
@@ -31,5 +33,8 @@ export default async function VerifyPage() {
       </main>
     );
   }
-  return <VerifyClient />;
+  // Forward the validated key to the client so it can authenticate
+  // browser-side fetch calls to /api/verify via the same header.
+  const betaKey = headerStore.get("x-proofmode-key") ?? null;
+  return <VerifyClient betaKey={betaKey} />;
 }
