@@ -5,6 +5,7 @@ import {
   markProcessing,
   markComplete,
   markFailed,
+  insertJobMetrics,
 } from "@/lib/jobs-db";
 import { requireBetaKey } from "@/lib/access";
 
@@ -66,7 +67,6 @@ export async function POST(request: NextRequest) {
   void (async () => {
     const startTime = Date.now();
     let telemetry: VerificationTelemetry | null = null;
-
     await markProcessing(jobId);
     try {
       const pack = await runVerification(text, jobId, {
@@ -77,13 +77,19 @@ export async function POST(request: NextRequest) {
       const { savePack } = await import("@/lib/jobs-db");
       const packId = await savePack(jobId, pack.engineVersion ?? "1.0.0-lite", pack);
       await markComplete(jobId, packId);
-
+      const durationMs = telemetry?.totalDurationMs ?? Date.now() - startTime;
+      await insertJobMetrics({
+        jobId,
+        durationMs,
+        llmTimeout: false,
+        retrievalUsed: (telemetry?.retrievalDurationMs ?? 0) > 0,
+      }).catch(() => {});
       console.log(
         JSON.stringify({
           level: "info",
           event: "job_completed",
           jobId,
-          totalDurationMs: telemetry?.totalDurationMs ?? Date.now() - startTime,
+          totalDurationMs: durationMs,
           llmDurationMs: telemetry?.llmDurationMs ?? null,
           retrievalDurationMs: telemetry?.retrievalDurationMs ?? null,
           claimsCount: telemetry?.claimsCount ?? pack.claims.length,
@@ -94,16 +100,23 @@ export async function POST(request: NextRequest) {
         })
       );
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Unknown verify failure";
+      const message = error instanceof Error ? error.message : "Unknown verify failure";
       const errorType = (error as { type?: string })?.type ?? "UNKNOWN_ERROR";
+      const isLlmTimeout = message.includes("timeout") || errorType === "LLM_TIMEOUT";
+      const durationMs = telemetry?.totalDurationMs ?? Date.now() - startTime;
       await markFailed(jobId, message);
+      await insertJobMetrics({
+        jobId,
+        durationMs,
+        llmTimeout: isLlmTimeout,
+        retrievalUsed: (telemetry?.retrievalDurationMs ?? 0) > 0,
+      }).catch(() => {});
       console.error(
         JSON.stringify({
           level: "error",
           event: "job_failed",
           jobId,
-          totalDurationMs: telemetry?.totalDurationMs ?? Date.now() - startTime,
+          totalDurationMs: durationMs,
           llmDurationMs: telemetry?.llmDurationMs ?? null,
           retrievalDurationMs: telemetry?.retrievalDurationMs ?? null,
           claimsCount: telemetry?.claimsCount ?? 0,
