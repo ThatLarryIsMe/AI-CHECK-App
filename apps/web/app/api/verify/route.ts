@@ -7,7 +7,7 @@ import {
   markFailed,
   insertJobMetrics,
 } from "@/lib/jobs-db";
-import { requireBetaKey } from "@/lib/access";
+import { getUserFromRequest } from "@/lib/auth";
 import { pool } from "@/lib/db";
 
 const rateLimitMap = new Map<string, { count: number; windowStart: number }>();
@@ -38,7 +38,6 @@ async function checkDailyLimits(
   const since = new Date();
   since.setUTCHours(since.getUTCHours() - 24);
 
-  // Per-IP daily check
   const ipResult = await pool.query<{ count: string }>(
     `SELECT COUNT(*) AS count FROM rate_limits WHERE ip = $1 AND created_at >= $2`,
     [ip, since.toISOString()]
@@ -48,7 +47,6 @@ async function checkDailyLimits(
     return { limited: true, message: "Daily per-IP limit reached." };
   }
 
-  // Global daily check
   const globalResult = await pool.query<{ count: string }>(
     `SELECT COUNT(*) AS count FROM rate_limits WHERE created_at >= $1`,
     [since.toISOString()]
@@ -65,11 +63,12 @@ async function checkDailyLimits(
 }
 
 export async function POST(request: NextRequest) {
-  const betaAccess = requireBetaKey(request);
-  if (!betaAccess.ok) {
+  // Phase P2.1: Require authenticated session
+  const sessionUser = await getUserFromRequest(request);
+  if (!sessionUser) {
     return NextResponse.json(
-      { error: "Invite-only beta. Invalid or missing access key." },
-      { status: 403 }
+      { error: "Authentication required. Please sign in." },
+      { status: 401 }
     );
   }
 
@@ -84,6 +83,7 @@ export async function POST(request: NextRequest) {
         level: "warn",
         event: "rate_limit_exceeded",
         ip,
+        userId: sessionUser.userId,
         timestamp: new Date().toISOString(),
       })
     );
@@ -101,6 +101,7 @@ export async function POST(request: NextRequest) {
         level: "warn",
         event: "rate_limited",
         ip,
+        userId: sessionUser.userId,
         reason: dailyCheck.message,
         timestamp: new Date().toISOString(),
       })
@@ -117,7 +118,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "text is required" }, { status: 400 });
   }
 
-  const job = await createJob(text);
+  // Phase P2.1: pass userId so jobs.user_id is populated
+  const job = await createJob(text, sessionUser.userId);
   const jobId = job.id;
 
   void (async () => {
@@ -166,6 +168,7 @@ export async function POST(request: NextRequest) {
           level: "info",
           event: "job_completed",
           jobId,
+          userId: sessionUser.userId,
           totalDurationMs: durationMs,
           llmDurationMs: telemetry?.llmDurationMs ?? null,
           retrievalDurationMs: telemetry?.retrievalDurationMs ?? null,
@@ -216,6 +219,7 @@ export async function POST(request: NextRequest) {
           level: "error",
           event: "job_failed",
           jobId,
+          userId: sessionUser.userId,
           totalDurationMs: durationMs,
           llmDurationMs: telemetry?.llmDurationMs ?? null,
           retrievalDurationMs: telemetry?.retrievalDurationMs ?? null,
