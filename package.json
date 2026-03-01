@@ -1,18 +1,15 @@
 {
   "name": "proofmode-ai-monorepo",
   "private": true,
+  "packageManager": "pnpm@latest",
   "engines": {
     "node": "24.x"
   },
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
   "scripts": {
-    "build": "npm -w apps/web run build",
-    "dev": "npm -w apps/web run dev",
-    "lint": "npm -w apps/web run lint",
-    "typecheck": "npm -w apps/web run typecheck"
+    "build": "pnpm --filter web run build",
+    "dev": "pnpm --filter web run dev",
+    "lint": "pnpm --filter web run lint",
+    "typecheck": "pnpm --filter web run typecheck"
   },
   "devDependencies": {
     "turbo": "^2.3.3",
