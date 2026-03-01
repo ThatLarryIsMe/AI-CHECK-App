@@ -181,3 +181,18 @@
                     - - Required env vars: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID_PRO`, `NEXT_PUBLIC_APP_URL`.
 - Decision: `DAILY_USER_LIMIT = 50` hardcoded for now; will move to env var in a future phase.
 - Decision: IP limits (25/IP/day, 500 global/day) remain alongside user limits for defense-in-depth.
+
+
+## Phase P4 — Auth Navigation + Product Clarity + Upgrade UX
+
+- `layout.tsx`: Auth-aware global nav reads `pm_session` cookie server-side; joins `sessions` + `users` to determine user and plan.
+- Unauthenticated nav: Verify, Trust, Login, Sign Up (primary).
+- - Authenticated nav: Verify, Trust, Account, Logout (POST `/api/auth/logout`), Upgrade button if plan is free.
+  - - Admin link removed from nav entirely.
+    - - `apps/web/app/page.tsx`: Home page rewritten with plain-English copy — headline "Turn Any Claim Into a Verification Report", subhead describes paste→extract→evaluate→evidence flow. CTAs: "Start Verifying" → `/verify`, "See How It Works" → `/trust`. Waitlist section replaced with "Invite-only beta" + "Create an account" → `/signup`.
+      - - `apps/web/app/verify/verify-client.tsx`: Added onboarding blurb (Supported/Mixed/Unsupported label meanings, one-liner on results saving). Added plan-aware usage note (Free: 10/day, Pro: 200/day) with "Upgrade in Account" link for free users. `plan` and `planStatus` props added.
+        - - `apps/web/app/verify/page.tsx`: Server component now queries `plan` + `plan_status` from `users` via session join and passes them to `VerifyClient`.
+          - - `apps/web/app/account/page.tsx`: Redirect fixed from `/signin` to `/login`. Added logout button (POST `/api/auth/logout`). Added "Usage today: X / limit" display with progress bar — queries `user_rate_limits` in last 24h.
+            - - `docs/beta-ops.md`: Removed all waitlist references; updated section 1 to point users to `/signup` with invite code; updated section 6 to reflect plan-aware limits (free 10, pro 200).
+              - - Decision: nav upgrade button links to `/account` (not a direct checkout trigger) to keep the nav action safe and reversible.
+                - - Decision: `getUsageToday()` is a separate async function (not inlined) so it can be independently tested and replaced with a cached query later.
