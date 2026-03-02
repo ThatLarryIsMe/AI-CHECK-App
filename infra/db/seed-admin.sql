@@ -1,9 +1,9 @@
 -- Seed an admin user for ProofMode
 -- Run after schema.sql.
 --
--- Default admin credentials:
---   Email:    admin@proofmode.ai
---   Password: ProofAdmin2024!
+-- Default admin email: admin@proofmode.ai
+-- Replace the hash below with one generated for your own password before running in production.
+-- Use: node infra/db/seed-admin.mjs (reads ADMIN_EMAIL and ADMIN_PASSWORD from env)
 --
 -- To generate a new password hash, run:
 --   node -e "const{scrypt,randomBytes}=require('crypto');const{promisify}=require('util');const s=promisify(scrypt);(async()=>{const salt=randomBytes(16).toString('hex');const key=await s('YOURPASSWORD',salt,64);console.log(salt+':'+key.toString('hex'))})()"
