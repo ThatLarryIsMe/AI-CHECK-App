@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
       avg_claims_per_pack: Number.parseFloat(avgClaimsResult[0]?.avg_claims ?? "0"),
     });
   } catch (error) {
-    console.error("admin stats GET error", error);
+    console.error(JSON.stringify({ level: "error", event: "admin_stats_failed", error: error instanceof Error ? error.message : String(error) }));
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

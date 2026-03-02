@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 type JobStatusResponse = {
-  status: "queued" | "running" | "completed" | "failed";
+  status: "queued" | "processing" | "complete" | "failed";
   packId?: string;
 };
 
@@ -28,7 +28,7 @@ export default function JobPage({ params }: { params: { id: string } }) {
           setError(null);
         }
 
-        if (data.status === "completed" || data.status === "failed") {
+        if (data.status === "complete" || data.status === "failed") {
           return;
         }
 
@@ -55,7 +55,7 @@ export default function JobPage({ params }: { params: { id: string } }) {
       {job ? (
         <>
           <p className="mt-4 text-lg">Status: {job.status}</p>
-          {job.status === "completed" && job.packId ? (
+          {job.status === "complete" && job.packId ? (
             <Link className="mt-4 text-cyan-300 underline" href={`/packs/${job.packId}`}>
               View evidence pack
             </Link>

@@ -31,5 +31,5 @@ export async function POST(request: NextRequest) {
         return_url: `${appUrl}/account`,
   })
 
-  return NextResponse.json({ url: portalSession.url })
+  return NextResponse.redirect(portalSession.url, 303)
 }

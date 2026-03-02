@@ -18,14 +18,22 @@ export async function POST(request: NextRequest) {
   const userResult = await pool.query<{
         stripe_customer_id: string | null
         email: string
+        plan: string
+        plan_status: string
   }>(
-        `SELECT stripe_customer_id, email FROM users WHERE id = $1`,
+        `SELECT stripe_customer_id, email, plan, plan_status FROM users WHERE id = $1`,
         [sessionUser.userId]
       )
     const user = userResult.rows[0]
     if (!user) {
           return NextResponse.json({ error: "User not found." }, { status: 404 })
     }
+
+  // H6: Prevent duplicate subscriptions — already-Pro users can't checkout again
+  if (user.plan === "pro" && user.plan_status === "active") {
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ""
+        return NextResponse.redirect(`${appUrl}/account`, 303)
+  }
 
   let customerId = user.stripe_customer_id
     if (!customerId) {
@@ -56,5 +64,5 @@ export async function POST(request: NextRequest) {
         },
   })
 
-  return NextResponse.json({ url: checkoutSession.url })
+  return NextResponse.redirect(checkoutSession.url!, 303)
 }

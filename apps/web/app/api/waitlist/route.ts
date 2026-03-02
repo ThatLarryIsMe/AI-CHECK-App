@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
 
       return NextResponse.json({ ok: true, message: 'Added to waitlist' }, { status: 201 });
     } catch (err) {
-          console.error('waitlist POST error', err);
+          console.error(JSON.stringify({ level: "error", event: "waitlist_post_failed", error: err instanceof Error ? err.message : String(err) }));
           return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }
@@ -40,7 +40,7 @@ export async function GET() {
           // Return count only — no PII
       return NextResponse.json({ count });
     } catch (err) {
-          console.error('waitlist GET error', err);
+          console.error(JSON.stringify({ level: "error", event: "waitlist_get_failed", error: err instanceof Error ? err.message : String(err) }));
           return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }
