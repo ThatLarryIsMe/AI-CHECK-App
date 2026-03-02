@@ -1,10 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
+import { timingSafeEqual } from "crypto";
 import { pool } from "@/lib/db";
 import {
   hashPassword,
   createSession,
   setSessionCookie,
 } from "@/lib/auth";
+
+// C6: Timing-safe invite code comparison
+function safeCompare(a: string, b: string): boolean {
+  try {
+    const aBuf = Buffer.from(a, "utf8");
+    const bBuf = Buffer.from(b, "utf8");
+    if (aBuf.length !== bBuf.length) {
+      timingSafeEqual(aBuf, aBuf);
+      return false;
+    }
+    return timingSafeEqual(aBuf, bBuf);
+  } catch {
+    return false;
+  }
+}
 
 export async function POST(request: NextRequest) {
   let body: unknown;
@@ -44,7 +60,7 @@ export async function POST(request: NextRequest) {
   }
 
   const expectedCode = process.env.INVITE_CODE;
-  if (!expectedCode || inviteCode !== expectedCode) {
+  if (!expectedCode || !safeCompare(inviteCode, expectedCode)) {
     return NextResponse.json(
       { error: "Invalid invite code" },
       { status: 403 }

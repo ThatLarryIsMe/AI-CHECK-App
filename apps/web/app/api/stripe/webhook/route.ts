@@ -14,7 +14,7 @@ async function upsertSubscription(subscription: Stripe.Subscription) {
             : subscription.customer.id
     const plan = getPlanFromSubscription(subscription)
     const planStatus = mapSubscriptionStatus(subscription.status)
-    const currentPeriodEnd = new Date(subscription.current_period_end * 1000)
+    const currentPeriodEnd = new Date((subscription.items.data[0]?.current_period_end ?? 0) * 1000)
     await pool.query(
           `UPDATE users
                SET stripe_subscription_id = $1,
@@ -41,6 +41,15 @@ export async function POST(request: NextRequest) {
           console.error(JSON.stringify({ level: "error", event: "stripe_webhook_sig_failed", error: msg }))
           return NextResponse.json({ error: `Signature failed: ${msg}` }, { status: 400 })
     }
+    // Atomic idempotency guard — INSERT returns nothing if event already seen
+    const inserted = await pool.query(
+      `INSERT INTO stripe_events (event_id) VALUES ($1) ON CONFLICT DO NOTHING RETURNING event_id`,
+      [event.id]
+    )
+    if (inserted.rows.length === 0) {
+      return NextResponse.json({ received: true, duplicate: true })
+    }
+
     try {
           switch (event.type) {
             case "checkout.session.completed": {

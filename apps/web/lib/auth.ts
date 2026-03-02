@@ -1,9 +1,14 @@
-import { randomBytes, scrypt, timingSafeEqual } from "crypto";
+import { createHash, randomBytes, scrypt, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { NextRequest, NextResponse } from "next/server";
 import { pool } from "@/lib/db";
 
 const scryptAsync = promisify(scrypt);
+
+// C8: Hash session tokens with SHA-256 before DB storage
+function hashToken(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
+}
 
 const SALT_LEN = 16;
 const KEY_LEN = 64;
@@ -45,14 +50,14 @@ export async function createSession(
 
   await pool.query(
     `INSERT INTO sessions (user_id, token, expires_at) VALUES ($1, $2, $3)`,
-    [userId, token, expiresAt.toISOString()]
+    [userId, hashToken(token), expiresAt.toISOString()]
   );
 
   return { token, expiresAt };
 }
 
 export async function deleteSession(token: string): Promise<void> {
-  await pool.query(`DELETE FROM sessions WHERE token = $1`, [token]);
+  await pool.query(`DELETE FROM sessions WHERE token = $1`, [hashToken(token)]);
 }
 
 interface SessionUser {
@@ -72,7 +77,7 @@ export async function getUserFromRequest(
      JOIN users u ON u.id = s.user_id
      WHERE s.token = $1
        AND s.expires_at > NOW()`,
-    [token]
+    [hashToken(token)]
   );
 
   if (!result.rows[0]) return null;
@@ -105,6 +110,55 @@ export function clearSessionCookie(response: NextResponse): void {
     path: "/",
     maxAge: 0,
   });
+}
+
+// ---------------------------------------------------------------------------
+// Server-component session helper (reads from next/headers cookies)
+// M3: Single source of truth for cookie-based session reads
+// ---------------------------------------------------------------------------
+
+export interface ServerSessionUser {
+  userId: string;
+  email: string;
+  plan: string;
+  planStatus: string;
+  currentPeriodEnd: Date | null;
+  role: string;
+}
+
+export async function getSessionFromCookie(): Promise<ServerSessionUser | null> {
+  const { cookies } = await import("next/headers");
+  try {
+    const cookieStore = cookies();
+    const token = cookieStore.get(COOKIE_NAME)?.value;
+    if (!token) return null;
+    const result = await pool.query<{
+      user_id: string;
+      email: string;
+      plan: string;
+      plan_status: string;
+      current_period_end: Date | null;
+      role: string;
+    }>(
+      `SELECT s.user_id, u.email, u.plan, u.plan_status, u.current_period_end, u.role
+       FROM sessions s
+       JOIN users u ON u.id = s.user_id
+       WHERE s.token = $1 AND s.expires_at > NOW()`,
+      [hashToken(token)]
+    );
+    const row = result.rows[0];
+    if (!row) return null;
+    return {
+      userId: row.user_id,
+      email: row.email,
+      plan: row.plan,
+      planStatus: row.plan_status,
+      currentPeriodEnd: row.current_period_end,
+      role: row.role ?? "user",
+    };
+  } catch {
+    return null;
+  }
 }
 
 export { COOKIE_NAME };

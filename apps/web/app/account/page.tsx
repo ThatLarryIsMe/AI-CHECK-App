@@ -1,29 +1,6 @@
 import { redirect } from "next/navigation"
-import { cookies } from "next/headers"
+import { getSessionFromCookie } from "@/lib/auth"
 import { pool } from "@/lib/db"
-
-// Phase P4: Account page — redirect fix (/login), logout button, usage display
-
-interface AccountUser {
-      email: string
-      plan: string
-      plan_status: string
-      current_period_end: Date | null
-      user_id: string
-}
-
-async function getAccountUser(): Promise<AccountUser | null> {
-      const cookieStore = cookies()
-      const token = cookieStore.get("pm_session")?.value
-      if (!token) return null
-      const result = await pool.query<AccountUser>(
-              `SELECT u.id AS user_id, u.email, u.plan, u.plan_status, u.current_period_end
-                   FROM sessions s JOIN users u ON u.id = s.user_id
-                        WHERE s.token = $1 AND s.expires_at > NOW()`,
-              [token]
-            )
-      return result.rows[0] ?? null
-}
 
 async function getUsageToday(userId: string, plan: string, planStatus: string): Promise<{ used: number; limit: number }> {
       try {
@@ -44,169 +21,128 @@ async function getUsageToday(userId: string, plan: string, planStatus: string): 
 function PlanBadge({ plan, status }: { plan: string; status: string }) {
       const isPro = plan === "pro" && status === "active"
       return (
-              <span
-                        style={{
-            display: "inline-block",
-                                    padding: "2px 10px",
-                                    borderRadius: "12px",
-                                    fontSize: "0.75rem",
-                                    fontWeight: 700,
-                                    background: isPro ? "#6366f1" : "#e5e7eb",
-            color: isPro ? "#fff" : "#374151",
-                                    textTransform: "uppercase",
-                  letterSpacing: "0.05em",
-                        }}
-                      >
-                  {isPro ? "Pro" : "Free"}
-              </span>span>
-            )
+        <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide ${isPro ? "bg-cyan-500/20 text-cyan-400" : "bg-slate-700 text-slate-300"}`}>
+            {isPro ? "Pro" : "Free"}
+        </span>
+      )
 }
-          
+
 export default async function AccountPage({
       searchParams,
 }: {
             searchParams: { success?: string; canceled?: string }
 }) {
-      const user = await getAccountUser()
+      const user = await getSessionFromCookie()
             if (!user) {
                     redirect("/login")
             }
-    
-      const isPro = user.plan === "pro" && user.plan_status === "active"
-            const periodEnd = user.current_period_end
-                    ? new Date(user.current_period_end).toLocaleDateString("en-US", {
+
+      const isPro = user.plan === "pro" && user.planStatus === "active"
+            const periodEnd = user.currentPeriodEnd
+                    ? new Date(user.currentPeriodEnd).toLocaleDateString("en-US", {
                                 year: "numeric",
                                 month: "long",
                                 day: "numeric",
                     })
                     : null
-                
-      const { used, limit } = await getUsageToday(user.user_id, user.plan, user.plan_status)
-                                                  
+
+      const { used, limit } = await getUsageToday(user.userId, user.plan, user.planStatus)
+      const usagePercent = Math.min(100, (used / limit) * 100)
+
             return (
-              <main style={{ maxWidth: 480, margin: "80px auto", fontFamily: "system-ui, sans-serif", padding: "0 16px" }}>
-                <h1 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: 24 }}>Account</h1>
+              <main className="min-h-screen bg-slate-950 px-4 py-16">
+                <div className="mx-auto max-w-md">
+                  <h1 className="mb-6 text-2xl font-bold text-white">Your account</h1>
 
                   {searchParams.success === "1" && (
-                          <div style={{ background: "#d1fae5", border: "1px solid #6ee7b7", borderRadius: 8, padding: "12px 16px", marginBottom: 20, color: "#065f46" }}>
-                                    Subscription activated. Welcome to Pro!
-                          </div>
-                        )}
-{searchParams.canceled === "1" && (
-        <div style={{ background: "#fef3c7", border: "1px solid #fcd34d", borderRadius: 8, padding: "12px 16px", marginBottom: 20, color: "#92400e" }}>
-                  Checkout canceled. No changes were made.
-        </div>div>
-                                             )}
-              
-      <section style={{ background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: 12, padding: 24, marginBottom: 24 }}>
-              <div style={{ marginBottom: 16 }}>
-                        <span style={{ fontSize: "0.75rem", color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em" }}>Email</span>span>
-                        <p style={{ marginTop: 4, fontWeight: 500 }}>{user.email}</p>p>
-              </div>div>
-      
-              <div style={{ marginBottom: 16 }}>
-                        <span style={{ fontSize: "0.75rem", color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em" }}>Plan</span>span>
-                        <div style={{ marginTop: 4, display: "flex", alignItems: "center", gap: 8 }}>
-                                    <PlanBadge plan={user.plan} status={user.plan_status} />
-                                    <span style={{ color: "#6b7280", fontSize: "0.875rem" }}>
-                                        {user.plan_status === "past_due" && "(payment past due)"}
-                                        {user.plan_status === "canceled" && "(canceled)"}
-                                        {user.plan_status === "inactive" && !isPro && "(no active subscription)"}
-                                    </span>span>
-                        </div>div>
-              </div>div>
-                                        
-          {/* Usage today */}
-              <div style={{ marginBottom: periodEnd ? 16 : 0 }}>
-                        <span style={{ fontSize: "0.75rem", color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em" }}>Usage today</span>span>
-                        <p style={{ marginTop: 4, fontWeight: 500 }}>
-                            {used} / {limit} verifications
-                        </p>p>
-                        <div style={{ marginTop: 6, height: 6, borderRadius: 3, background: "#e5e7eb", overflow: "hidden" }}>
-                                    <div
-                                                      style={{
-                                                                          height: "100%",
-                                                                          width: `${Math.min(100, (used / limit) * 100)}%`,
-                                                                          background: used >= limit ? "#ef4444" : "#6366f1",
-                                                                          borderRadius: 3,
-                                                      }}
-                                                    />
-                        </div>
-              </div>div>
-      
-          {periodEnd && (
-              <div>
-                          <span style={{ fontSize: "0.75rem", color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                              {isPro ? "Renews" : "Expires"}
-                          </span>span>
-                          <p style={{ marginTop: 4, fontWeight: 500 }}>{periodEnd}</p>p>
-              </div>div>
-              )}
-      </section>section>
-              
-                                           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                                               {!isPro && (
-              <form action="/api/billing/checkout" method="POST">
-                          <button
-                                            type="submit"
-                                            style={{
-                                                                width: "100%",
-                                                                padding: "12px 24px",
-                                                                background: "#6366f1",
-                                                                color: "#fff",
-                                                                border: "none",
-                                                                borderRadius: 8,
-                                                                fontWeight: 600,
-                                                                fontSize: "1rem",
-                                                                cursor: "pointer",
-                                            }}
-                                          >
-                                        Upgrade to Pro — $X/month
-                          </button>button>
-              </form>form>
-                                                   )}
-                                           
-                                               {isPro && (
-              <form action="/api/billing/portal" method="POST">
-                          <button
-                                            type="submit"
-                                            style={{
-                                                                width: "100%",
-                                                                padding: "12px 24px",
-                                                                background: "#fff",
-                    color: "#374151",
-                                                                border: "1px solid #d1d5db",
-                                                                borderRadius: 8,
-                                                                fontWeight: 600,
-                                                                fontSize: "1rem",
-                                                                cursor: "pointer",
-                                            }}
-                                          >
-                  Manage Billing
-                          </button>button>
-              </form>form>
-                                                   )}
-                                           
-                                               {/* Logout */}
-                                                   <form action="/api/auth/logout" method="POST">
-                                                             <button
-                                                                             type="submit"
-                                                                             style={{
-              width: "100%",
-                                                                                               padding: "10px 24px",
-                                                                                               background: "transparent",
-                                                                                               color: "#6b7280",
-                  border: "1px solid #d1d5db",
-                                                                                               borderRadius: 8,
-                                                                                               fontWeight: 500,
-                                                                                               fontSize: "0.9rem",
-                                                                                               cursor: "pointer",
-                                                                             }}
-                                                                           >
-                                                                         Log out
-                                                             </button>button>
-                                                   </form>
-                                           </div>div>
-              </main>main>
-                  )
-}</span>
+                    <div className="mb-5 rounded-lg border border-green-700 bg-green-950/40 px-4 py-3 text-sm text-green-400">
+                      Subscription activated — welcome to Pro!
+                    </div>
+                  )}
+                  {searchParams.canceled === "1" && (
+                    <div className="mb-5 rounded-lg border border-yellow-700 bg-yellow-950/40 px-4 py-3 text-sm text-yellow-400">
+                      Checkout canceled. No changes were made.
+                    </div>
+                  )}
+
+                  <section className="rounded-xl border border-slate-800 bg-slate-900 p-6 space-y-5">
+                    {/* Email */}
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Email</p>
+                      <p className="mt-1 font-medium text-white">{user.email}</p>
+                    </div>
+
+                    {/* Plan */}
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Plan</p>
+                      <div className="mt-1 flex items-center gap-2">
+                        <PlanBadge plan={user.plan} status={user.planStatus} />
+                        <span className="text-sm text-slate-500">
+                          {user.planStatus === "past_due" && "(payment past due)"}
+                          {user.planStatus === "canceled" && "(canceled)"}
+                          {user.planStatus === "inactive" && !isPro && ""}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Usage today */}
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Usage today</p>
+                      <p className="mt-1 font-medium text-white">
+                        {used} / {limit} verifications
+                      </p>
+                      <div className="mt-2 h-1.5 rounded-full bg-slate-700 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${used >= limit ? "bg-red-500" : "bg-cyan-500"}`}
+                          style={{ width: `${usagePercent}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Renewal */}
+                    {periodEnd && (
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          {isPro ? "Renews" : "Expires"}
+                        </p>
+                        <p className="mt-1 font-medium text-white">{periodEnd}</p>
+                      </div>
+                    )}
+                  </section>
+
+                  <div className="mt-6 flex flex-col gap-3">
+                    {!isPro && (
+                      <form action="/api/billing/checkout" method="POST">
+                        <button
+                          type="submit"
+                          className="w-full rounded-lg bg-cyan-500 px-4 py-3 font-semibold text-slate-950 transition hover:bg-cyan-400"
+                        >
+                          Upgrade to Pro
+                        </button>
+                      </form>
+                    )}
+
+                    {isPro && (
+                      <form action="/api/billing/portal" method="POST">
+                        <button
+                          type="submit"
+                          className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 font-medium text-slate-300 transition hover:border-slate-600 hover:text-white"
+                        >
+                          Manage billing
+                        </button>
+                      </form>
+                    )}
+
+                    <form action="/api/auth/logout" method="POST">
+                      <button
+                        type="submit"
+                        className="w-full rounded-lg border border-slate-700 px-4 py-2.5 text-sm text-slate-500 transition hover:border-slate-600 hover:text-slate-300"
+                      >
+                        Sign out
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              </main>
+            )
+}

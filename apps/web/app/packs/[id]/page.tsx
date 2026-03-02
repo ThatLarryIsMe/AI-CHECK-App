@@ -1,8 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import type { EvidencePack } from "@proofmode/core";
-
-const VERSION = "0.1.0";
+import { VERSION } from "@/../../version";
 
 type ClaimWithEvidence = EvidencePack["claims"][number] & {
   classification?: string;

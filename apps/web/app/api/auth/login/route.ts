@@ -6,7 +6,38 @@ import {
   setSessionCookie,
 } from "@/lib/auth";
 
+// Brute-force protection — 5 attempts per IP per 15 minutes (DB-backed, serverless-safe)
+const LOGIN_ATTEMPT_LIMIT = 5;
+const LOGIN_WINDOW_MINUTES = 15;
+
+async function checkLoginRateLimit(ip: string): Promise<boolean> {
+  const since = new Date();
+  since.setMinutes(since.getMinutes() - LOGIN_WINDOW_MINUTES);
+
+  const result = await pool.query<{ id: number }>(
+    `INSERT INTO login_attempts (ip)
+     SELECT $1
+     WHERE (SELECT COUNT(*) FROM login_attempts WHERE ip = $1 AND attempted_at >= $2) < $3
+     RETURNING id`,
+    [ip, since.toISOString(), LOGIN_ATTEMPT_LIMIT]
+  );
+  return result.rows.length === 0; // true = rate limited
+}
+
 export async function POST(request: NextRequest) {
+  const ip =
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    request.headers.get("x-real-ip") ??
+    "unknown";
+
+  const limited = await checkLoginRateLimit(ip);
+  if (limited) {
+    return NextResponse.json(
+      { error: "Too many login attempts. Please wait 15 minutes." },
+      { status: 429 }
+    );
+  }
+
   let body: unknown;
   try {
     body = await request.json();

@@ -88,7 +88,7 @@ ALTER TABLE packs
 
 -- Phase N1: Production Observability Baseline
 CREATE TABLE IF NOT EXISTS job_metrics (
-    job_id UUID REFERENCES jobs(id) ON DELETE CASCADE,
+    job_id UUID PRIMARY KEY REFERENCES jobs(id) ON DELETE CASCADE,
     duration_ms INTEGER NOT NULL,
     llm_timeout BOOLEAN NOT NULL DEFAULT FALSE,
     retrieval_used BOOLEAN NOT NULL DEFAULT FALSE,
@@ -96,7 +96,16 @@ CREATE TABLE IF NOT EXISTS job_metrics (
 );
 
 CREATE INDEX IF NOT EXISTS idx_job_metrics_created_at ON job_metrics (created_at);
-CREATE INDEX IF NOT EXISTS idx_job_metrics_job_id ON job_metrics (job_id);
+
+-- Migration: add PK if table already exists without one
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'job_metrics_pkey' AND conrelid = 'job_metrics'::regclass
+  ) THEN
+    ALTER TABLE job_metrics ADD CONSTRAINT job_metrics_pkey PRIMARY KEY (job_id);
+  END IF;
+END $$;
 
 
 -- Phase P1: Cost Controls + Abuse Guard
@@ -141,3 +150,39 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS plan TEXT NOT NULL DEFAULT 'free';
 ALTER TABLE users ADD COLUMN IF NOT EXISTS plan_status TEXT NOT NULL DEFAULT 'inactive';
 ALTER TABLE users ADD COLUMN IF NOT EXISTS current_period_end TIMESTAMPTZ;
+
+-- Login brute-force protection (DB-backed, serverless-safe)
+CREATE TABLE IF NOT EXISTS login_attempts (
+  id SERIAL PRIMARY KEY,
+  ip TEXT NOT NULL,
+  attempted_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_login_attempts_ip_at ON login_attempts (ip, attempted_at);
+
+-- Admin role support
+ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'user';
+
+-- Phase X1: Cleanup function for expired data (H4/H5)
+-- Call via cron (e.g., Neon scheduled queries) or admin endpoint
+CREATE OR REPLACE FUNCTION cleanup_expired_data() RETURNS void AS $$
+BEGIN
+  DELETE FROM sessions WHERE expires_at < NOW();
+  DELETE FROM rate_limits WHERE created_at < NOW() - INTERVAL '48 hours';
+  DELETE FROM user_rate_limits WHERE created_at < NOW() - INTERVAL '48 hours';
+  DELETE FROM login_attempts WHERE attempted_at < NOW() - INTERVAL '1 hour';
+  DELETE FROM stripe_events WHERE processed_at < NOW() - INTERVAL '7 days';
+END;
+$$ LANGUAGE plpgsql;
+
+-- Stripe webhook idempotency (dedup replay / retries)
+CREATE TABLE IF NOT EXISTS stripe_events (
+  event_id TEXT PRIMARY KEY,
+  processed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Phase X1: Production readiness indexes
+CREATE INDEX IF NOT EXISTS idx_users_stripe_customer_id ON users (stripe_customer_id);
+CREATE INDEX IF NOT EXISTS idx_jobs_user_id ON jobs (user_id);
+CREATE INDEX IF NOT EXISTS idx_jobs_created_at ON jobs (created_at);
+CREATE INDEX IF NOT EXISTS idx_packs_job_id ON packs (job_id);

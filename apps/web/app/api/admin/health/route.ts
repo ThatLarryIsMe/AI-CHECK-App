@@ -17,6 +17,7 @@ export async function GET(request: NextRequest) {
     const todayUtc = new Date();
     todayUtc.setUTCHours(0, 0, 0, 0);
 
+    // M8: All aggregates are now scoped to today (UTC) to avoid dilution by historical data
     const result = await pool.query<{
       total_jobs_today: string;
       avg_duration_ms: string | null;
@@ -24,21 +25,17 @@ export async function GET(request: NextRequest) {
       retrieval_count: string;
     }>(
       `SELECT
-        COUNT(*) FILTER (WHERE created_at >= $1) AS total_jobs_today,
+        COUNT(*) AS total_jobs_today,
         AVG(duration_ms) AS avg_duration_ms,
         COUNT(*) FILTER (WHERE llm_timeout = TRUE) AS timeout_count,
         COUNT(*) FILTER (WHERE retrieval_used = TRUE) AS retrieval_count
-      FROM job_metrics`,
+      FROM job_metrics
+      WHERE created_at >= $1`,
       [todayUtc.toISOString()]
     );
 
     const row = result.rows[0];
     const totalJobsToday = parseInt(row.total_jobs_today ?? "0", 10);
-
-    const totalAll = await pool.query<{ total: string }>(
-      `SELECT COUNT(*) AS total FROM job_metrics`
-    );
-    const totalAllCount = parseInt(totalAll.rows[0]?.total ?? "0", 10);
 
     const avgDurationMs =
       row.avg_duration_ms != null
@@ -48,12 +45,12 @@ export async function GET(request: NextRequest) {
     const retrievalCount = parseInt(row.retrieval_count ?? "0", 10);
 
     const timeoutRate =
-      totalAllCount > 0
-        ? Math.round((timeoutCount / totalAllCount) * 100 * 100) / 100
+      totalJobsToday > 0
+        ? Math.round((timeoutCount / totalJobsToday) * 100 * 100) / 100
         : 0;
     const retrievalRate =
-      totalAllCount > 0
-        ? Math.round((retrievalCount / totalAllCount) * 100 * 100) / 100
+      totalJobsToday > 0
+        ? Math.round((retrievalCount / totalJobsToday) * 100 * 100) / 100
         : 0;
 
     // Phase P1: count rate-limited attempts today

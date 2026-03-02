@@ -17,7 +17,7 @@ export const UserSchema = z.object({
 export const JobSchema = z.object({
   id: z.string().uuid(),
   userId: z.string().uuid(),
-  status: z.enum(["queued", "running", "completed", "failed"]),
+  status: z.enum(["queued", "processing", "complete", "failed"]),
   createdAt: z.string().datetime()
 });
 
