@@ -1,8 +1,12 @@
 const MAX_PDF_BYTES = 10_000_000; // 10 MB
 
 /**
- * Extract text from a PDF buffer.
- * Uses pdf-parse (Mozilla pdfjs-dist wrapper).
+ * Extract text from a PDF buffer using pdf-parse.
+ *
+ * IMPORTANT: We import from "pdf-parse/lib/pdf-parse.js" directly rather than
+ * the package root. The package root auto-runs a test that imports pdfjs-dist
+ * canvas bindings, which crash in Node/Vercel with "DOMMatrix is not defined".
+ * The lib path skips that test bootstrapping entirely.
  */
 export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
   if (buffer.length > MAX_PDF_BYTES) {
@@ -12,13 +16,20 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
     );
   }
 
-  // Dynamic import so pdf-parse is only loaded when needed
+  // Use the internal lib path to avoid the test-file side-effect that triggers
+  // pdfjs-dist canvas/DOMMatrix usage.
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const pdfParse = require("pdf-parse") as (buf: Buffer) => Promise<{ text: string; numpages: number }>;
+  const pdfParse = require("pdf-parse/lib/pdf-parse.js") as (
+    buf: Buffer,
+    options?: Record<string, unknown>
+  ) => Promise<{ text: string; numpages: number }>;
 
   let result: { text: string };
   try {
-    result = await pdfParse(buffer);
+    result = await pdfParse(buffer, {
+      // Disable rendering pipeline — we only need text, not layout
+      max: 0,
+    });
   } catch (err: unknown) {
     throw Object.assign(
       new Error(`Failed to parse PDF: ${err instanceof Error ? err.message : "unknown"}`),
