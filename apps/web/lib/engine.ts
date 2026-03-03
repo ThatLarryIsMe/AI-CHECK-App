@@ -4,7 +4,7 @@ import { classifyClaim } from "./classifier";
 import { retrieveEvidence } from "./retrieval";
 
 const ENGINE_VERSION = process.env.ENGINE_VERSION ?? "1.0.0-lite";
-const MAX_INPUT_LENGTH = 5_000;
+const MAX_INPUT_LENGTH = 10_000;
 const MAX_CLAIMS = 5;
 
 export type VerificationTelemetry = {

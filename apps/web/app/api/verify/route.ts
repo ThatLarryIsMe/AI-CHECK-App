@@ -9,9 +9,11 @@ import {
 } from "@/lib/jobs-db";
 import { getUserFromRequest } from "@/lib/auth";
 import { pool } from "@/lib/db";
+import { extractTextFromUrl } from "@/lib/url-extractor";
+import { extractTextFromPdf } from "@/lib/pdf-extractor";
 
-// Allow up to 60s for LLM + retrieval processing on Vercel
-export const maxDuration = 60;
+// Allow up to 120s for URL/PDF fetch + LLM + retrieval on Vercel
+export const maxDuration = 120;
 
 // Phase P1: Daily cost-control limits
 const DAILY_IP_LIMIT = 25;
@@ -106,11 +108,56 @@ export async function POST(request: NextRequest) {
     request.headers.get("x-real-ip") ??
     "unknown";
 
-  // Parse and validate body before consuming rate limit quota (X1.15)
-  const body = await request.json().catch(() => null);
-  const text = typeof body?.text === "string" ? body.text.trim() : "";
-  if (!text) {
-    return NextResponse.json({ error: "text is required" }, { status: 400 });
+  // Parse input — supports JSON { text } or { url }, or FormData with a PDF file
+  let text = "";
+  let sourceType: "text" | "url" | "pdf" = "text";
+  let sourceRef = "";
+
+  const contentType = request.headers.get("content-type") ?? "";
+  if (contentType.includes("multipart/form-data")) {
+    // PDF file upload via FormData
+    const formData = await request.formData().catch(() => null);
+    const file = formData?.get("file");
+    if (!file || !(file instanceof Blob)) {
+      return NextResponse.json({ error: "A PDF file is required" }, { status: 400 });
+    }
+    if (file.size > 10_000_000) {
+      return NextResponse.json({ error: "PDF must be under 10 MB" }, { status: 400 });
+    }
+    const arrayBuffer = await file.arrayBuffer();
+    try {
+      text = await extractTextFromPdf(Buffer.from(arrayBuffer));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to extract text from PDF";
+      return NextResponse.json({ error: msg }, { status: 400 });
+    }
+    sourceType = "pdf";
+    sourceRef = file instanceof File ? file.name : "upload.pdf";
+  } else {
+    // JSON body — either { text } or { url }
+    const body = await request.json().catch(() => null);
+    const rawText = typeof body?.text === "string" ? body.text.trim() : "";
+    const rawUrl = typeof body?.url === "string" ? body.url.trim() : "";
+
+    if (rawUrl) {
+      try {
+        text = await extractTextFromUrl(rawUrl);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Failed to fetch URL";
+        return NextResponse.json({ error: msg }, { status: 400 });
+      }
+      sourceType = "url";
+      sourceRef = rawUrl;
+    } else if (rawText) {
+      text = rawText;
+    } else {
+      return NextResponse.json({ error: "text, url, or a PDF file is required" }, { status: 400 });
+    }
+  }
+
+  // Truncate extracted text to engine max (10k chars)
+  if (text.length > 10_000) {
+    text = text.slice(0, 10_000);
   }
 
   // H1: Atomic per-user daily cap (check + insert in one query)
