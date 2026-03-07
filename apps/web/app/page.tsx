@@ -1,7 +1,32 @@
 import Link from "next/link";
 import { VERSION } from "@/../../version";
+import { pool } from "@/lib/db";
 
-export default function Home() {
+async function getGlobalStats(): Promise<{ totalClaims: number; totalPacks: number }> {
+    try {
+        const [claimsResult, packsResult] = await Promise.all([
+            pool.query<{ count: string }>(`SELECT COUNT(*) AS count FROM claims`),
+            pool.query<{ count: string }>(`SELECT COUNT(*) AS count FROM packs`),
+        ]);
+        return {
+            totalClaims: parseInt(claimsResult.rows[0]?.count ?? "0", 10),
+            totalPacks: parseInt(packsResult.rows[0]?.count ?? "0", 10),
+        };
+    } catch {
+        return { totalClaims: 0, totalPacks: 0 };
+    }
+}
+
+function formatNumber(n: number): string {
+    if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
+    if (n >= 1_000) return (n / 1_000).toFixed(1).replace(/\.0$/, "") + "K";
+    return n.toLocaleString();
+}
+
+export default async function Home() {
+    const stats = await getGlobalStats();
+    const showCounter = stats.totalClaims > 0;
+
     return (
           <main className="min-h-screen bg-slate-950 text-white flex flex-col">
             {/* Hero */}
@@ -38,7 +63,7 @@ export default function Home() {
                         <div className="flex gap-4 flex-wrap justify-center">
                                   <Link
                                                 href="/verify"
-                                                className="px-8 py-3.5 bg-cyan-500 text-slate-950 rounded-lg font-bold text-lg hover:bg-cyan-400 transition shadow-lg shadow-cyan-500/25"
+                                                className="glow-cta px-8 py-3.5 bg-cyan-500 text-slate-950 rounded-lg font-bold text-lg hover:bg-cyan-400 transition"
                                               >
                                               Start Checking Facts
                                   </Link>
@@ -52,6 +77,21 @@ export default function Home() {
                         <p className="mt-6 text-sm text-slate-500">
                             Free to use — no credit card required
                         </p>
+
+                        {/* Live counter */}
+                        {showCounter && (
+                            <div className="mt-8 counter-animate flex items-center gap-6 rounded-xl border border-slate-800 bg-slate-900/60 px-8 py-4">
+                                <div className="text-center">
+                                    <p className="text-2xl font-black text-cyan-400">{formatNumber(stats.totalClaims)}</p>
+                                    <p className="text-xs text-slate-500 uppercase tracking-wide">claims verified</p>
+                                </div>
+                                <div className="h-8 w-px bg-slate-700" />
+                                <div className="text-center">
+                                    <p className="text-2xl font-black text-white">{formatNumber(stats.totalPacks)}</p>
+                                    <p className="text-xs text-slate-500 uppercase tracking-wide">reports generated</p>
+                                </div>
+                            </div>
+                        )}
                 </section>
 
             {/* How it compares */}
@@ -60,7 +100,7 @@ export default function Home() {
                         <h2 className="text-2xl font-bold text-center mb-10">
                             Why ProofMode is different
                         </h2>
-                        <div className="grid gap-8 sm:grid-cols-3 text-center">
+                        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4 text-center">
                             <div>
                                 <p className="text-3xl font-bold text-cyan-400 mb-2">Claim-level</p>
                                 <p className="text-slate-400 text-sm">
@@ -80,6 +120,13 @@ export default function Home() {
                                 <p className="text-slate-400 text-sm">
                                     Three-tier verdicts (Supported, Mixed, Unsupported) handle ambiguity honestly
                                     instead of forcing binary true/false.
+                                </p>
+                            </div>
+                            <div>
+                                <p className="text-3xl font-bold text-cyan-400 mb-2">Time-aware</p>
+                                <p className="text-slate-400 text-sm">
+                                    Facts have a shelf life. ProofMode tracks claim freshness and alerts you
+                                    when your verifications need updating. No one else does this.
                                 </p>
                             </div>
                         </div>
@@ -135,9 +182,13 @@ export default function Home() {
                                 <path d="M5 8l2 2 4-4" stroke="#22d3ee" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                             </svg>
                             <span className="font-bold text-cyan-400">Verified by ProofMode — 87% Trust Score</span>
+                            <span className="ml-2 flex items-center gap-1 text-xs">
+                                <span className="h-2 w-2 rounded-full bg-green-500" />
+                                <span className="text-green-400 font-medium">Fresh</span>
+                            </span>
                         </div>
                         <p className="mt-4 text-xs text-slate-500">
-                            Embed this badge on any website to show your content has been verified
+                            Embed a live badge on any website — auto-updates with trust score and freshness
                         </p>
                     </div>
                 </section>

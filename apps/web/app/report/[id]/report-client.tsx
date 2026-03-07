@@ -210,6 +210,13 @@ export function ReportClient({
           : "Expired"
     : "Fresh";
 
+  const isHighTrust = stats.trustScore >= 80;
+  const celebrationMessage = isHighTrust
+    ? stats.trustScore === 100
+      ? "Perfect score. Every claim checks out."
+      : "Strong verification. This content holds up."
+    : null;
+
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
       <div className="mx-auto max-w-3xl px-4 py-12">
@@ -223,6 +230,24 @@ export function ReportClient({
             Pack ID: {packId} &middot; Engine: {pack.engineVersion}
           </p>
         </div>
+
+        {/* Celebration banner for high trust */}
+        {celebrationMessage && (
+          <div className="trust-shimmer mb-6 rounded-xl border border-green-500/30 bg-green-500/5 px-6 py-4 text-center">
+            <div className="flex items-center justify-center gap-3">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="shrink-0">
+                <circle cx="12" cy="12" r="10" stroke="#22c55e" strokeWidth="2"/>
+                <path d="M8 12l3 3 5-5" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <p className="text-lg font-bold text-green-400">{celebrationMessage}</p>
+            </div>
+            {stats.trustScore === 100 && (
+              <p className="mt-1 text-sm text-green-400/60">
+                All {stats.total} claims verified as supported with evidence.
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Trust Score + Freshness + Stats */}
         <div className="mb-8 rounded-xl border border-slate-700 bg-slate-900 p-6">
