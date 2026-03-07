@@ -4,8 +4,10 @@ import { classifyClaim } from "./classifier";
 import { retrieveEvidence } from "./retrieval";
 
 const ENGINE_VERSION = process.env.ENGINE_VERSION ?? "1.0.0-lite";
-const MAX_INPUT_LENGTH = 5_000;
-const MAX_CLAIMS = 5;
+const MAX_INPUT_LENGTH_FREE = 5_000;
+const MAX_INPUT_LENGTH_PRO = 15_000;
+const MAX_CLAIMS_FREE = 5;
+const MAX_CLAIMS_PRO = 15;
 
 export type VerificationTelemetry = {
   jobId: string;
@@ -22,13 +24,17 @@ export type VerificationTelemetry = {
 export async function runVerification(
   text: string,
   jobId: string,
-  options?: { onTelemetry?: (telemetry: VerificationTelemetry) => void }
+  options?: { onTelemetry?: (telemetry: VerificationTelemetry) => void; isPro?: boolean }
 ): Promise<EvidencePack> {
   const startTime = Date.now();
   let llmDurationMs = 0;
   let retrievalDurationMs = 0;
   let claimsCount = 0;
   let evidenceCount = 0;
+
+  const isPro = options?.isPro ?? false;
+  const MAX_INPUT_LENGTH = isPro ? MAX_INPUT_LENGTH_PRO : MAX_INPUT_LENGTH_FREE;
+  const MAX_CLAIMS = isPro ? MAX_CLAIMS_PRO : MAX_CLAIMS_FREE;
 
   try {
     if (text.length > MAX_INPUT_LENGTH) {
@@ -43,7 +49,7 @@ export async function runVerification(
     const packId = crypto.randomUUID();
 
     const extractStart = Date.now();
-    const claimTexts = (await extractClaims(text)).slice(0, MAX_CLAIMS);
+    const claimTexts = (await extractClaims(text, MAX_CLAIMS)).slice(0, MAX_CLAIMS);
     llmDurationMs += Date.now() - extractStart;
 
     const claimsWithEvidence = await Promise.all(

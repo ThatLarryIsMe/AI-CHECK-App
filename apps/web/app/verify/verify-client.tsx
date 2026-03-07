@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 const HISTORY_KEY = "proofmode_history";
@@ -34,6 +34,7 @@ function saveToHistory(packId: string, snippet: string) {
 
 export function VerifyClient({ plan = "free", planStatus = "inactive" }: { plan?: string; planStatus?: string }) {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [activeTab, setActiveTab] = useState<InputTab>("text");
     const [text, setText] = useState("");
     const [url, setUrl] = useState("");
@@ -45,7 +46,13 @@ export function VerifyClient({ plan = "free", planStatus = "inactive" }: { plan?
 
   useEffect(() => {
         setHistory(loadHistory());
-  }, []);
+        // Auto-populate URL tab from bookmarklet or shared links
+        const urlParam = searchParams.get("url");
+        if (urlParam) {
+          setActiveTab("url");
+          setUrl(urlParam);
+        }
+  }, [searchParams]);
 
   const isPro = plan === "pro" && planStatus === "active";
   const dailyLimit = isPro ? 200 : 10;
@@ -121,7 +128,7 @@ export function VerifyClient({ plan = "free", planStatus = "inactive" }: { plan?
           const packId = data.packId ?? data.jobId;
           saveToHistory(packId, inputText);
           setHistory(loadHistory());
-          router.push(`/packs/${packId}`);
+          router.push(`/report/${packId}`);
         } catch (submitError) {
           if (submitError instanceof Error && submitError.message === "redirect") return;
           setError(
@@ -315,7 +322,7 @@ export function VerifyClient({ plan = "free", planStatus = "inactive" }: { plan?
                                   {history.map((entry) => (
                                       <li key={entry.packId}>
                                                         <Link
-                                                                              href={`/packs/${entry.packId}`}
+                                                                              href={`/report/${entry.packId}`}
                                                                               className="block rounded-lg bg-slate-800 px-3 py-2 transition hover:bg-slate-700"
                                                                             >
                                                                             <p className="text-xs text-slate-500">{new Date(entry.ts).toLocaleString()}</p>

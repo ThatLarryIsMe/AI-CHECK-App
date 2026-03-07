@@ -168,6 +168,7 @@ export async function POST(request: NextRequest) {
   await markProcessing(jobId);
   try {
     const pack = await runVerification(text, jobId, {
+      isPro: userCapCheck.isPro,
       onTelemetry: (payload) => {
         telemetry = payload;
       },

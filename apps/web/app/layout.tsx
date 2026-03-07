@@ -68,13 +68,25 @@ export default async function RootLayout({
                                                                           >
                                                                           How It Works
                                                           </Link>
+                                                          <Link
+                                                                            href="/tools"
+                                                                            className="text-slate-400 transition hover:text-cyan-400"
+                                                                          >
+                                                                          Tools
+                                                          </Link>
 
                                               {navUser ? (
                           // Authenticated state
                           <>
+                                            <Link
+                                                                  href="/dashboard"
+                                                                  className="text-slate-400 transition hover:text-cyan-400"
+                                                                >
+                                                                Dashboard
+                                            </Link>
                             {!isPro && (
                                                 <Link
-                                                                        href="/account"
+                                                                        href="/pricing"
                                                                         className="rounded bg-cyan-500 px-3 py-1 text-xs font-semibold text-slate-950 transition hover:bg-cyan-400"
                                                                       >
                                                                       Upgrade

@@ -76,11 +76,19 @@ export default async function PricingPage() {
               </li>
               <li className="flex items-start gap-2">
                 <span className="mt-0.5 text-cyan-400">&#10003;</span>
-                Everything in Free
+                Up to 15 claims per check (vs 5 on Free)
               </li>
               <li className="flex items-start gap-2">
                 <span className="mt-0.5 text-cyan-400">&#10003;</span>
-                Priority processing
+                15,000 character input limit (3x Free)
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-0.5 text-cyan-400">&#10003;</span>
+                URL &amp; PDF fact-checking
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-0.5 text-cyan-400">&#10003;</span>
+                Shareable verification reports with Trust Score
               </li>
               <li className="flex items-start gap-2">
                 <span className="mt-0.5 text-cyan-400">&#10003;</span>

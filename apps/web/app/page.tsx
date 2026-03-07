@@ -13,22 +13,26 @@ export default function Home() {
                             Know what&apos;s true <span className="text-cyan-400">before you share it</span>
                         </h1>
                         <p className="text-xl text-slate-300 max-w-2xl mb-10 leading-relaxed">
-                            Paste any article, post, or claim. ProofMode breaks it down into individual facts,
-                            checks each one against real sources, and gives you a clear, shareable report
-                            in seconds.
+                            Paste text, drop a URL, or upload a PDF. ProofMode extracts every factual claim,
+                            verifies each one against real sources, and delivers a shareable Trust Score
+                            report — all in seconds.
                         </p>
                         <ul className="text-slate-200 text-left max-w-xl w-full space-y-4 mb-12">
                                   <li className="flex items-start gap-3">
                                               <span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-cyan-500/20 text-xs text-cyan-400">&#10003;</span>
-                                              <span><strong className="text-white">Automatic claim extraction</strong> — AI identifies every factual statement so nothing slips through</span>
+                                              <span><strong className="text-white">Paste text, URLs, or PDFs</strong> — fact-check articles, papers, social posts, or any written content</span>
                                   </li>
                                   <li className="flex items-start gap-3">
                                               <span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-cyan-500/20 text-xs text-cyan-400">&#10003;</span>
-                                              <span><strong className="text-white">Evidence-backed verdicts</strong> — each claim is rated Supported, Mixed, or Unsupported with sources</span>
+                                              <span><strong className="text-white">Evidence-backed verdicts</strong> — each claim is rated Supported, Mixed, or Unsupported with real sources</span>
                                   </li>
                                   <li className="flex items-start gap-3">
                                               <span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-cyan-500/20 text-xs text-cyan-400">&#10003;</span>
-                                              <span><strong className="text-white">One-click sharing</strong> — send a verification report to your team, audience, or editor</span>
+                                              <span><strong className="text-white">Trust Score</strong> — every report gets an overall trust score you can share and embed</span>
+                                  </li>
+                                  <li className="flex items-start gap-3">
+                                              <span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-cyan-500/20 text-xs text-cyan-400">&#10003;</span>
+                                              <span><strong className="text-white">Shareable reports</strong> — every verification creates a public report with social previews and an embeddable badge</span>
                                   </li>
                         </ul>
                         <div className="flex gap-4 flex-wrap justify-center">
