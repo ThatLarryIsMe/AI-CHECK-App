@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getPack } from "@/lib/jobs-db";
 import { VERSION } from "@/../../version";
 import { ReportClient } from "./report-client";
+import { analyzePackDecay } from "@/lib/decay";
 
 interface PageProps {
   params: { id: string };
@@ -72,6 +73,18 @@ export default async function ReportPage({ params }: PageProps) {
   }
 
   const stats = computeStats(pack);
+  const decay = analyzePackDecay(pack.claims, pack.createdAt);
+  const decayData = {
+    packFreshness: decay.packFreshness,
+    staleClaims: decay.staleClaims,
+    expiredClaims: decay.expiredClaims,
+    claims: decay.claims.map((c) => ({
+      category: c.category,
+      freshness: c.freshness,
+      label: c.label,
+      textColor: c.textColor,
+    })),
+  };
 
-  return <ReportClient pack={pack} packId={params.id} stats={stats} version={VERSION} />;
+  return <ReportClient pack={pack} packId={params.id} stats={stats} version={VERSION} decay={decayData} />;
 }

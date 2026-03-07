@@ -23,6 +23,20 @@ interface ReportStats {
   trustScore: number;
 }
 
+interface ClaimDecayData {
+  category: string;
+  freshness: number;
+  label: string;
+  textColor: string;
+}
+
+interface DecayData {
+  packFreshness: number;
+  staleClaims: number;
+  expiredClaims: number;
+  claims: ClaimDecayData[];
+}
+
 const STATUS_LABELS: Record<string, string> = {
   supported: "Supported",
   mixed: "Not Enough Info",
@@ -41,22 +55,26 @@ const STATUS_BG: Record<string, string> = {
   unsupported: "bg-red-500/10 border-red-500/30",
 };
 
+function freshnessBarColor(score: number): string {
+  if (score >= 80) return "bg-green-500";
+  if (score >= 50) return "bg-yellow-500";
+  if (score >= 25) return "bg-orange-500";
+  return "bg-red-500";
+}
+
 function TrustScoreGauge({ score }: { score: number }) {
-  // Color based on score
   const color =
     score >= 70 ? "#22c55e" : score >= 40 ? "#eab308" : "#ef4444";
   const label =
     score >= 70 ? "High Trust" : score >= 40 ? "Mixed" : "Low Trust";
 
-  // SVG arc
   const radius = 60;
-  const circumference = Math.PI * radius; // half circle
+  const circumference = Math.PI * radius;
   const offset = circumference - (score / 100) * circumference;
 
   return (
     <div className="flex flex-col items-center">
       <svg width="160" height="100" viewBox="0 0 160 100">
-        {/* Background arc */}
         <path
           d="M 10 90 A 60 60 0 0 1 150 90"
           fill="none"
@@ -64,7 +82,6 @@ function TrustScoreGauge({ score }: { score: number }) {
           strokeWidth="12"
           strokeLinecap="round"
         />
-        {/* Score arc */}
         <path
           d="M 10 90 A 60 60 0 0 1 150 90"
           fill="none"
@@ -75,7 +92,6 @@ function TrustScoreGauge({ score }: { score: number }) {
           strokeDashoffset={`${offset}`}
           style={{ transition: "stroke-dashoffset 1s ease-out" }}
         />
-        {/* Score text */}
         <text
           x="80"
           y="75"
@@ -93,22 +109,66 @@ function TrustScoreGauge({ score }: { score: number }) {
   );
 }
 
+function FreshnessGauge({ freshness, label }: { freshness: number; label: string }) {
+  const color =
+    freshness >= 80 ? "#22c55e" : freshness >= 50 ? "#eab308" : freshness >= 25 ? "#f97316" : "#ef4444";
+
+  return (
+    <div className="flex flex-col items-center">
+      <div className="relative h-16 w-16">
+        <svg width="64" height="64" viewBox="0 0 64 64">
+          <circle cx="32" cy="32" r="28" fill="none" stroke="#1e293b" strokeWidth="4" />
+          <circle
+            cx="32"
+            cy="32"
+            r="28"
+            fill="none"
+            stroke={color}
+            strokeWidth="4"
+            strokeLinecap="round"
+            strokeDasharray={`${2 * Math.PI * 28}`}
+            strokeDashoffset={`${2 * Math.PI * 28 * (1 - freshness / 100)}`}
+            transform="rotate(-90 32 32)"
+            style={{ transition: "stroke-dashoffset 1s ease-out" }}
+          />
+          <text
+            x="32"
+            y="36"
+            textAnchor="middle"
+            className="fill-white"
+            style={{ fontSize: "14px", fontWeight: "bold" }}
+          >
+            {freshness}%
+          </text>
+        </svg>
+      </div>
+      <p className="mt-1 text-xs font-medium" style={{ color }}>
+        {label}
+      </p>
+    </div>
+  );
+}
+
 export function ReportClient({
   pack,
   packId,
   stats,
   version,
+  decay,
 }: {
   pack: EvidencePack;
   packId: string;
   stats: ReportStats;
   version: string;
+  decay?: DecayData;
 }) {
   const [copyState, setCopyState] = useState<"idle" | "copied">("idle");
   const [embedCopyState, setEmbedCopyState] = useState<"idle" | "copied">("idle");
+  const [widgetCopyState, setWidgetCopyState] = useState<"idle" | "copied">("idle");
   const [showEmbed, setShowEmbed] = useState(false);
 
   const reportUrl = typeof window !== "undefined" ? window.location.href : "";
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
   const claims = pack.claims as ClaimWithEvidence[];
 
   function handleCopyLink() {
@@ -132,6 +192,24 @@ export function ReportClient({
     });
   }
 
+  function handleCopyWidget() {
+    const widgetCode = `<div data-proofmode-badge="${packId}"></div>\n<script src="${origin}/badge.js" async></script>`;
+    void navigator.clipboard.writeText(widgetCode).then(() => {
+      setWidgetCopyState("copied");
+      setTimeout(() => setWidgetCopyState("idle"), 2000);
+    });
+  }
+
+  const freshnessLabel = decay
+    ? decay.packFreshness >= 80
+      ? "Fresh"
+      : decay.packFreshness >= 50
+        ? "Aging"
+        : decay.packFreshness >= 25
+          ? "Stale"
+          : "Expired"
+    : "Fresh";
+
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
       <div className="mx-auto max-w-3xl px-4 py-12">
@@ -146,10 +224,14 @@ export function ReportClient({
           </p>
         </div>
 
-        {/* Trust Score + Stats */}
+        {/* Trust Score + Freshness + Stats */}
         <div className="mb-8 rounded-xl border border-slate-700 bg-slate-900 p-6">
           <div className="flex flex-col items-center gap-6 sm:flex-row sm:justify-around">
             <TrustScoreGauge score={stats.trustScore} />
+
+            {decay && (
+              <FreshnessGauge freshness={decay.packFreshness} label={freshnessLabel} />
+            )}
 
             <div className="grid grid-cols-2 gap-4 text-center sm:grid-cols-4">
               <div>
@@ -170,6 +252,29 @@ export function ReportClient({
               </div>
             </div>
           </div>
+
+          {/* Decay warning banner */}
+          {decay && decay.staleClaims > 0 && (
+            <div className="mt-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-4 py-3">
+              <div className="flex items-center gap-2">
+                <span className="text-yellow-400 text-lg">&#9888;</span>
+                <div>
+                  <p className="text-sm font-medium text-yellow-400">
+                    {decay.staleClaims} of {stats.total} claims may need re-verification
+                  </p>
+                  <p className="text-xs text-yellow-400/70 mt-0.5">
+                    Claims decay at different rates based on their type. Statistics go stale faster than scientific findings.
+                  </p>
+                </div>
+              </div>
+              <Link
+                href="/verify"
+                className="mt-2 inline-block rounded bg-yellow-500/20 px-3 py-1.5 text-xs font-semibold text-yellow-400 transition hover:bg-yellow-500/30"
+              >
+                Re-verify this content
+              </Link>
+            </div>
+          )}
 
           {/* Share buttons */}
           <div className="mt-6 flex flex-wrap items-center justify-center gap-2 border-t border-slate-700 pt-4">
@@ -193,30 +298,56 @@ export function ReportClient({
             </button>
           </div>
 
-          {/* Embed code */}
+          {/* Embed options */}
           {showEmbed && (
-            <div className="mt-4 rounded-lg border border-slate-700 bg-slate-800 p-4">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                Embed this badge on your site
-              </p>
-              <div className="mb-3 flex justify-center">
-                {/* Badge preview */}
-                <span
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-cyan-500 bg-slate-950 px-3 py-1.5 text-xs font-semibold text-cyan-400"
+            <div className="mt-4 rounded-lg border border-slate-700 bg-slate-800 p-4 space-y-4">
+              {/* Simple badge */}
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  Simple badge (HTML)
+                </p>
+                <div className="mb-3 flex justify-center">
+                  <span
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-cyan-500 bg-slate-950 px-3 py-1.5 text-xs font-semibold text-cyan-400"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                      <circle cx="8" cy="8" r="7" stroke="#22d3ee" strokeWidth="1.5" />
+                      <path d="M5 8l2 2 4-4" stroke="#22d3ee" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    Verified by ProofMode — {stats.trustScore}% Trust Score
+                  </span>
+                </div>
+                <button
+                  onClick={handleCopyEmbed}
+                  className="w-full rounded bg-cyan-500 px-3 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
                 >
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                    <circle cx="8" cy="8" r="7" stroke="#22d3ee" strokeWidth="1.5" />
-                    <path d="M5 8l2 2 4-4" stroke="#22d3ee" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                  Verified by ProofMode — {stats.trustScore}% Trust Score
-                </span>
+                  {embedCopyState === "copied" ? "Copied!" : "Copy Embed Code"}
+                </button>
               </div>
-              <button
-                onClick={handleCopyEmbed}
-                className="w-full rounded bg-cyan-500 px-3 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
-              >
-                {embedCopyState === "copied" ? "Copied!" : "Copy Embed Code"}
-              </button>
+
+              {/* Live widget */}
+              <div className="border-t border-slate-700 pt-4">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  Live widget (JS) — auto-updates with trust score + freshness
+                </p>
+                <div className="mb-3 rounded-lg border border-slate-600 bg-slate-900 p-3">
+                  <code className="block text-xs text-slate-300 whitespace-pre-wrap break-all">
+                    {`<div data-proofmode-badge="${packId}"></div>\n<script src="${origin}/badge.js" async></script>`}
+                  </code>
+                </div>
+                <div className="mb-3">
+                  <p className="text-xs text-slate-500 mb-1">Also available as SVG image:</p>
+                  <code className="block text-xs text-slate-400 bg-slate-900 rounded p-2 break-all">
+                    {`${origin}/api/badge/${packId}`}
+                  </code>
+                </div>
+                <button
+                  onClick={handleCopyWidget}
+                  className="w-full rounded bg-cyan-500 px-3 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
+                >
+                  {widgetCopyState === "copied" ? "Copied!" : "Copy Widget Code"}
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -228,6 +359,7 @@ export function ReportClient({
             const evidence = Array.isArray(claim.evidence) ? claim.evidence : [];
             const confidence =
               claim.confidence > 1 ? claim.confidence : Math.round(claim.confidence * 100);
+            const claimDecay = decay?.claims?.[i];
 
             return (
               <div
@@ -242,8 +374,25 @@ export function ReportClient({
                     {STATUS_LABELS[status] ?? status}
                   </span>
                 </div>
-                <div className="mt-2 text-sm text-slate-400">
-                  Confidence: {confidence}%
+                <div className="mt-2 flex items-center gap-4 text-sm text-slate-400">
+                  <span>Confidence: {confidence}%</span>
+                  {claimDecay && (
+                    <span className="flex items-center gap-1.5">
+                      <span className="text-slate-600">|</span>
+                      <span className={claimDecay.textColor}>
+                        {claimDecay.label}
+                      </span>
+                      <span className="text-xs text-slate-500">
+                        ({claimDecay.category})
+                      </span>
+                      <div className="ml-1 h-1.5 w-16 rounded-full bg-slate-700 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${freshnessBarColor(claimDecay.freshness)}`}
+                          style={{ width: `${claimDecay.freshness}%` }}
+                        />
+                      </div>
+                    </span>
+                  )}
                 </div>
 
                 {/* Evidence */}
@@ -282,6 +431,14 @@ export function ReportClient({
             classification, and web evidence retrieval. Confidence scores are model-internal
             estimates. This is not a substitute for professional fact-checking.
           </p>
+          {decay && (
+            <p className="mt-2">
+              <span className="font-medium text-slate-300">Freshness tracking:</span>{" "}
+              Each claim is categorized (statistic, economic, scientific, etc.) and assigned a decay
+              curve. Statistics go stale in ~2 weeks; scientific findings last ~6 months.
+              Re-verify when claims show as &ldquo;Stale&rdquo; or &ldquo;Expired.&rdquo;
+            </p>
+          )}
           <div className="mt-4 flex items-center gap-4">
             <Link
               href="/trust"
