@@ -7,5 +7,5 @@ export default async function VerifyPage() {
     if (!user) {
       redirect("/login");
     }
-    return <VerifyClient plan={user.plan} planStatus={user.planStatus} />;
+    return <VerifyClient plan={user.plan} planStatus={user.planStatus} role={user.role} />;
 }

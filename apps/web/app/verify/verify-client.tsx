@@ -34,7 +34,7 @@ function saveToHistory(packId: string, snippet: string) {
 
 const STEPS = ["Extracting text", "Analyzing claims", "Verifying facts", "Building report"];
 
-export function VerifyClient({ plan = "free", planStatus = "inactive" }: { plan?: string; planStatus?: string }) {
+export function VerifyClient({ plan = "free", planStatus = "inactive", role = "user" }: { plan?: string; planStatus?: string; role?: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<InputTab>("text");
@@ -70,8 +70,9 @@ export function VerifyClient({ plan = "free", planStatus = "inactive" }: { plan?
   }, [loading]);
 
   const isPro = plan === "pro" && planStatus === "active";
-  const dailyLimit = isPro ? 200 : 10;
-  const charLimit = isPro ? 15000 : 5000;
+  const isAdmin = role === "admin";
+  const dailyLimit = isAdmin ? Infinity : isPro ? 200 : 2;
+  const charLimit = isPro || isAdmin ? 15000 : 5000;
 
   async function extractFromUrl(): Promise<string> {
     const res = await fetch("/api/extract-url", {
@@ -211,7 +212,7 @@ export function VerifyClient({ plan = "free", planStatus = "inactive" }: { plan?
           {/* Plan usage */}
           <div className="mb-5 flex items-center gap-3 text-xs text-slate-500">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-800/60 px-3 py-1">
-              {isPro ? "Pro" : "Free"}: {dailyLimit} checks / day
+              {isAdmin ? "Admin" : isPro ? "Pro" : "Free"}: {isAdmin ? "unlimited" : dailyLimit} checks / day
             </span>
             {!isPro && (
               <Link href="/pricing" className="text-brand-400 hover:text-brand-300">

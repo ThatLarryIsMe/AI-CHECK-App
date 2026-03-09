@@ -278,7 +278,7 @@ export default async function Home() {
           Start verifying in 30 seconds
         </h2>
         <p className="text-slate-400 max-w-xl mx-auto mb-10">
-          Create a free account and get 10 verifications per day. No credit card
+          Create a free account and get 2 verifications per day. No credit card
           required. Upgrade anytime for more checks and deeper analysis.
         </p>
         <div className="flex gap-4 flex-wrap justify-center">

@@ -10,7 +10,7 @@ function CheckSvg({ className = "" }: { className?: string }) {
 }
 
 const freeFeatures = [
-  "10 verifications per day",
+  "2 verifications per day",
   "Automatic claim extraction",
   "Evidence-backed verdicts",
   "Shareable verification reports",
@@ -26,7 +26,7 @@ const proFeatures = [
 ];
 
 const comparisonRows = [
-  { feature: "Daily verifications", free: "10", pro: "200" },
+  { feature: "Daily verifications", free: "2", pro: "200" },
   { feature: "Claims per check", free: "5", pro: "15" },
   { feature: "Character limit", free: "5,000", pro: "15,000" },
   { feature: "URL fact-checking", free: false, pro: true },
@@ -39,7 +39,7 @@ const comparisonRows = [
 const faqs = [
   {
     q: "Can I use ProofMode without an account?",
-    a: "You need a free account to use ProofMode. Creating one takes seconds and gives you 10 free verifications per day.",
+    a: "You need a free account to use ProofMode. Creating one takes seconds and gives you 2 free verifications per day.",
   },
   {
     q: "What counts as one verification?",

@@ -5,7 +5,7 @@ import { pool } from "@/lib/db"
 import { analyzePackDecay } from "@/lib/decay"
 import type { EvidencePack } from "@proofmode/core"
 
-async function getUsageToday(userId: string, plan: string, planStatus: string): Promise<{ used: number; limit: number }> {
+async function getUsageToday(userId: string, plan: string, planStatus: string, role: string): Promise<{ used: number; limit: number }> {
       try {
               const result = await pool.query<{ count: string }>(
                         `SELECT COUNT(*) AS count FROM user_rate_limits
@@ -13,11 +13,13 @@ async function getUsageToday(userId: string, plan: string, planStatus: string): 
                         [userId]
                       )
               const used = parseInt(result.rows[0]?.count ?? "0", 10)
+              const isAdmin = role === "admin"
               const isPro = plan === "pro" && planStatus === "active"
-              const limit = isPro ? 200 : 10
+              const limit = isAdmin ? Infinity : isPro ? 200 : 2
               return { used, limit }
                              } catch {
-              return { used: 0, limit: plan === "pro" && planStatus === "active" ? 200 : 10 }
+              const isPro = plan === "pro" && planStatus === "active"
+              return { used: 0, limit: role === "admin" ? Infinity : isPro ? 200 : 2 }
       }
 }
 
@@ -97,8 +99,9 @@ export default async function AccountPage({
                     })
                     : null
 
-      const { used, limit } = await getUsageToday(user.userId, user.plan, user.planStatus)
-      const usagePercent = Math.min(100, (used / limit) * 100)
+      const { used, limit } = await getUsageToday(user.userId, user.plan, user.planStatus, user.role)
+      const isUnlimited = !isFinite(limit)
+      const usagePercent = isUnlimited ? 0 : Math.min(100, (used / limit) * 100)
 
       // Fetch stale packs for the decay alerts section
       const stalePacks = await getStalePacks(user.userId)
@@ -143,7 +146,7 @@ export default async function AccountPage({
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Usage today</p>
                       <p className="mt-1 font-medium text-white">
-                        {used} / {limit} verifications
+                        {used}{isUnlimited ? "" : ` / ${limit}`} verification{used !== 1 ? "s" : ""}{isUnlimited ? " (unlimited)" : ""}
                       </p>
                       <div className="mt-2 h-1.5 rounded-full bg-slate-700 overflow-hidden">
                         <div
