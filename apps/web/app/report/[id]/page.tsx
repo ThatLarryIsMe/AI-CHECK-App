@@ -21,11 +21,12 @@ function computeStats(pack: { claims: Array<{ status: string; confidence: number
         )
       : 0;
 
-  // Trust Score: weighted formula
-  // Supported claims boost the score, unsupported claims lower it
+  // Trust Score: conservative weighted formula
+  // Only supported claims contribute to the score. Mixed (insufficient evidence)
+  // and unsupported claims get zero credit to avoid inflating trust scores.
   const trustScore =
     total > 0
-      ? Math.round(((supported * 100 + mixed * 50 + unsupported * 0) / (total * 100)) * 100)
+      ? Math.round(((supported * 100 + mixed * 0 + unsupported * 0) / (total * 100)) * 100)
       : 0;
 
   return { total, supported, mixed, unsupported, avgConfidence, trustScore };

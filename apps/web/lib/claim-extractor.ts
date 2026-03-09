@@ -9,6 +9,7 @@ Rules:
 - Do not include opinions, predictions, questions, or subjective statements.
 - Do not include trivially true or obvious claims.
 - Each claim should make sense on its own without context from the original text.
+- CRITICAL: Only extract claims that are ACTUALLY STATED in the text. Do NOT add, infer, or fabricate claims that the text does not make. Every claim must be directly traceable to a specific sentence or passage in the input.
 - Return ONLY valid JSON in this exact format: {"claims": ["claim 1", "claim 2"]}
 - No prose, no markdown, no explanation outside the JSON object.`;
 

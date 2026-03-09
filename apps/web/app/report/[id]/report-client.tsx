@@ -6,6 +6,7 @@ import type { EvidencePack } from "@proofmode/core";
 
 type ClaimWithEvidence = EvidencePack["claims"][number] & {
   classification?: string;
+  reasoning?: string;
   evidence?: Array<{
     sourceUrl: string;
     sourceTitle: string;
@@ -420,9 +421,18 @@ export function ReportClient({
                   )}
                 </div>
 
+                {/* Reasoning */}
+                {claim.reasoning && (
+                  <p className="mt-2 text-sm text-slate-400 italic">
+                    <span className="not-italic font-medium text-slate-500">Reasoning: </span>
+                    {claim.reasoning}
+                  </p>
+                )}
+
                 {/* Evidence */}
                 {evidence.length > 0 && (
                   <div className="mt-3 space-y-2">
+                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Web sources</p>
                     {evidence.map((item, j) => (
                       <div key={j} className="rounded-lg border border-slate-700/50 bg-slate-800/50 p-3">
                         <a
@@ -433,15 +443,20 @@ export function ReportClient({
                         >
                           {item.sourceTitle}
                         </a>
-                        <blockquote className="mt-1.5 border-l-2 border-slate-600 pl-3 text-sm italic text-slate-300">
+                        <p className="mt-1.5 border-l-2 border-slate-600 pl-3 text-sm text-slate-300">
+                          <span className="text-xs text-slate-500">Search snippet: </span>
                           {item.quotedSpan}
-                        </blockquote>
+                        </p>
                       </div>
                     ))}
                   </div>
                 )}
                 {evidence.length === 0 && (
-                  <p className="mt-2 text-xs text-slate-500">LLM-only classification (no web sources retrieved)</p>
+                  <div className="mt-3 rounded-lg border border-yellow-500/20 bg-yellow-500/5 px-3 py-2">
+                    <p className="text-xs text-yellow-400/80">
+                      No web evidence retrieved for this claim. Verdict defaulted to &quot;Not Enough Info&quot; with 0% confidence.
+                    </p>
+                  </div>
                 )}
               </div>
             );

@@ -5,7 +5,8 @@ export const ClaimSchema = z.object({
     packId: z.string().uuid(),
     text: z.string(),
     status: z.enum(["supported", "mixed", "unsupported"]),
-    confidence: z.number().min(0).max(1)
+    confidence: z.number().min(0).max(1),
+    reasoning: z.string().optional(),
 });
 
 export const EvidenceSchema = z.object({
@@ -13,7 +14,10 @@ export const EvidenceSchema = z.object({
     claimId: z.string().uuid(),
     sourceUrl: z.string().url(),
     snippet: z.string(),
-    relevanceScore: z.number()
+    relevanceScore: z.number(),
+    sourceTitle: z.string().optional(),
+    quotedSpan: z.string().optional(),
+    retrievedAt: z.string().optional(),
 });
 
 export const EvidencePackSchema = z.object({
