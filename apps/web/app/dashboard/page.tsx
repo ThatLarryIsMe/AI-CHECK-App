@@ -31,11 +31,14 @@ async function getUserVerifications(userId: string): Promise<VerificationRow[]> 
          WHERE c->>'status' = 'unsupported'
        ), 0) AS unsupported_count,
        CASE
-         WHEN COALESCE(jsonb_array_length(p.pack_json->'claims'), 0) = 0 THEN 0
-         ELSE ROUND((
-           COALESCE((SELECT COUNT(*) FROM jsonb_array_elements(p.pack_json->'claims') c WHERE c->>'status' = 'supported'), 0) * 100
-           + COALESCE((SELECT COUNT(*) FROM jsonb_array_elements(p.pack_json->'claims') c WHERE c->>'status' = 'mixed'), 0) * 50
-         ) * 100.0 / (COALESCE(jsonb_array_length(p.pack_json->'claims'), 1) * 100))
+         WHEN COALESCE((
+           SELECT COUNT(*) FROM jsonb_array_elements(p.pack_json->'claims') c
+           WHERE c->>'status' IN ('supported', 'mixed', 'unsupported')
+         ), 0) = 0 THEN 0
+         ELSE ROUND(
+           COALESCE((SELECT COUNT(*) FROM jsonb_array_elements(p.pack_json->'claims') c WHERE c->>'status' = 'supported'), 0) * 100.0
+           / COALESCE((SELECT COUNT(*) FROM jsonb_array_elements(p.pack_json->'claims') c WHERE c->>'status' IN ('supported', 'mixed', 'unsupported')), 1)
+         )
        END AS trust_score
      FROM jobs j
      JOIN packs p ON p.job_id = j.id

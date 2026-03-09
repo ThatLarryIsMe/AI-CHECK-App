@@ -20,6 +20,7 @@ interface ReportStats {
   supported: number;
   mixed: number;
   unsupported: number;
+  insufficient: number;
   avgConfidence: number;
   trustScore: number;
 }
@@ -40,20 +41,23 @@ interface DecayData {
 
 const STATUS_LABELS: Record<string, string> = {
   supported: "Supported",
-  mixed: "Not Enough Info",
+  mixed: "Conflicting Sources",
   unsupported: "Unsupported",
+  insufficient: "Insufficient Evidence",
 };
 
 const STATUS_COLORS: Record<string, string> = {
   supported: "text-green-400",
-  mixed: "text-yellow-400",
+  mixed: "text-orange-400",
   unsupported: "text-red-400",
+  insufficient: "text-slate-400",
 };
 
 const STATUS_BG: Record<string, string> = {
   supported: "bg-green-500/10 border-green-500/30",
-  mixed: "bg-yellow-500/10 border-yellow-500/30",
+  mixed: "bg-orange-500/10 border-orange-500/30",
   unsupported: "bg-red-500/10 border-red-500/30",
+  insufficient: "bg-slate-500/10 border-slate-500/30",
 };
 
 function freshnessBarColor(score: number): string {
@@ -259,7 +263,7 @@ export function ReportClient({
               <FreshnessGauge freshness={decay.packFreshness} label={freshnessLabel} />
             )}
 
-            <div className="grid grid-cols-2 gap-4 text-center sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 text-center sm:grid-cols-5">
               <div>
                 <p className="text-2xl font-bold text-white">{stats.total}</p>
                 <p className="text-xs text-slate-400">Claims</p>
@@ -269,12 +273,16 @@ export function ReportClient({
                 <p className="text-xs text-slate-400">Supported</p>
               </div>
               <div>
-                <p className="text-2xl font-bold text-yellow-400">{stats.mixed}</p>
-                <p className="text-xs text-slate-400">Mixed</p>
+                <p className="text-2xl font-bold text-red-400">{stats.unsupported}</p>
+                <p className="text-xs text-slate-400">Refuted</p>
               </div>
               <div>
-                <p className="text-2xl font-bold text-red-400">{stats.unsupported}</p>
-                <p className="text-xs text-slate-400">Unsupported</p>
+                <p className="text-2xl font-bold text-orange-400">{stats.mixed}</p>
+                <p className="text-xs text-slate-400">Conflicting</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-slate-400">{stats.insufficient}</p>
+                <p className="text-xs text-slate-400">Unverifiable</p>
               </div>
             </div>
           </div>
@@ -454,7 +462,7 @@ export function ReportClient({
                 {evidence.length === 0 && (
                   <div className="mt-3 rounded-lg border border-yellow-500/20 bg-yellow-500/5 px-3 py-2">
                     <p className="text-xs text-yellow-400/80">
-                      No web evidence retrieved for this claim. Verdict defaulted to &quot;Not Enough Info&quot; with 0% confidence.
+                      No web evidence retrieved for this claim. Cannot verify or refute without sources.
                     </p>
                   </div>
                 )}
@@ -467,9 +475,12 @@ export function ReportClient({
         <div className="mt-10 rounded-xl border border-slate-800 bg-slate-900/50 p-6 text-sm text-slate-400">
           <h3 className="mb-2 font-semibold text-slate-300">About this report</h3>
           <p>
-            This verification was performed by ProofMode v{version} using AI claim extraction,
-            classification, and web evidence retrieval. Confidence scores are model-internal
-            estimates. This is not a substitute for professional fact-checking.
+            This verification was performed by ProofMode v{version}. Claims are extracted from
+            input text, then each claim is checked against web evidence retrieved from multiple
+            search queries. Verdicts are based ONLY on retrieved evidence — never on AI knowledge
+            alone. Claims without sufficient evidence are marked &ldquo;Insufficient Evidence&rdquo;
+            rather than guessed. This is an automated tool and is not a substitute for professional
+            fact-checking.
           </p>
           {decay && (
             <p className="mt-2">

@@ -30,9 +30,12 @@ export async function GET(
   const supported = claims.filter((c) => c.status === "supported").length;
   const mixed = claims.filter((c) => c.status === "mixed").length;
   const unsupported = claims.filter((c) => c.status === "unsupported").length;
+  const insufficient = claims.filter((c) => c.status === "insufficient").length;
+  // Trust score based only on verifiable claims (exclude insufficient)
+  const verifiable = supported + mixed + unsupported;
   const trustScore =
-    total > 0
-      ? Math.round(((supported * 100 + mixed * 50) / (total * 100)) * 100)
+    verifiable > 0
+      ? Math.round((supported / verifiable) * 100)
       : 0;
 
   // Decay analysis
@@ -53,6 +56,7 @@ export async function GET(
         supported,
         mixed,
         unsupported,
+        insufficient,
         staleClaims: decay.staleClaims,
         expiredClaims: decay.expiredClaims,
         verifiedAt: pack.createdAt,

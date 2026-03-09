@@ -125,10 +125,10 @@ export async function runVerification(
             })
           );
           result = {
-            status: "mixed" as const,
+            status: "insufficient" as const,
             confidence: 0,
-            llmClassification: "not_enough_info" as const,
-            reasoning: "Classification failed. Defaulted to not_enough_info.",
+            llmClassification: "insufficient" as const,
+            reasoning: "Classification failed. Defaulted to insufficient evidence.",
           };
         }
         llmDurationMs += Date.now() - classificationStart;
