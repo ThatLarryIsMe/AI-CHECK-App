@@ -1,6 +1,9 @@
 import { redirect } from "next/navigation"
+import Link from "next/link"
 import { getSessionFromCookie } from "@/lib/auth"
 import { pool } from "@/lib/db"
+import { analyzePackDecay } from "@/lib/decay"
+import type { EvidencePack } from "@proofmode/core"
 
 async function getUsageToday(userId: string, plan: string, planStatus: string): Promise<{ used: number; limit: number }> {
       try {
@@ -15,6 +18,54 @@ async function getUsageToday(userId: string, plan: string, planStatus: string): 
               return { used, limit }
                              } catch {
               return { used: 0, limit: plan === "pro" && planStatus === "active" ? 200 : 10 }
+      }
+}
+
+interface StalePack {
+      packId: string
+      snippet: string
+      freshness: number
+      staleClaims: number
+      totalClaims: number
+      verifiedAt: string
+}
+
+async function getStalePacks(userId: string): Promise<StalePack[]> {
+      try {
+              const { rows } = await pool.query<{
+                      pack_id: string
+                      pack_json: EvidencePack
+                      created_at: string
+              }>(
+                      `SELECT p.id AS pack_id, p.pack_json, p.created_at
+                       FROM packs p
+                       JOIN jobs j ON j.id = p.job_id
+                       WHERE j.user_id = $1
+                       ORDER BY p.created_at DESC
+                       LIMIT 20`,
+                      [userId]
+              )
+
+              const stale: StalePack[] = []
+              for (const row of rows) {
+                      const pack = row.pack_json
+                      if (!pack?.claims?.length) continue
+                      const decay = analyzePackDecay(pack.claims, row.created_at)
+                      if (decay.packFreshness < 50) {
+                              stale.push({
+                                      packId: row.pack_id,
+                                      snippet: pack.claims[0]?.text?.slice(0, 60) ?? "",
+                                      freshness: decay.packFreshness,
+                                      staleClaims: decay.staleClaims,
+                                      totalClaims: pack.claims.length,
+                                      verifiedAt: row.created_at,
+                              })
+                      }
+                      if (stale.length >= 5) break
+              }
+              return stale
+      } catch {
+              return []
       }
 }
 
@@ -48,6 +99,9 @@ export default async function AccountPage({
 
       const { used, limit } = await getUsageToday(user.userId, user.plan, user.planStatus)
       const usagePercent = Math.min(100, (used / limit) * 100)
+
+      // Fetch stale packs for the decay alerts section
+      const stalePacks = await getStalePacks(user.userId)
 
             return (
               <main className="min-h-screen bg-slate-950 px-4 py-16">
@@ -109,6 +163,43 @@ export default async function AccountPage({
                       </div>
                     )}
                   </section>
+
+                  {/* Stale verification alerts */}
+                  {stalePacks.length > 0 && (
+                    <section className="mt-6 rounded-xl border border-yellow-500/30 bg-yellow-500/5 p-5">
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="text-yellow-400 text-lg">&#9888;</span>
+                        <h2 className="text-sm font-semibold text-yellow-400">
+                          {stalePacks.length} verification{stalePacks.length > 1 ? "s" : ""} going stale
+                        </h2>
+                      </div>
+                      <p className="text-xs text-slate-400 mb-3">
+                        Claims decay over time as facts change. Re-verify to keep your reports current.
+                      </p>
+                      <ul className="space-y-2">
+                        {stalePacks.map((sp) => (
+                          <li key={sp.packId}>
+                            <Link
+                              href={`/report/${sp.packId}`}
+                              className="block rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2.5 transition hover:border-yellow-500/50"
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <p className="text-sm text-slate-200 truncate flex-1">{sp.snippet}&hellip;</p>
+                                <span className={`shrink-0 text-xs font-semibold ${
+                                  sp.freshness < 25 ? "text-red-400" : "text-yellow-400"
+                                }`}>
+                                  {sp.freshness}% fresh
+                                </span>
+                              </div>
+                              <p className="mt-1 text-xs text-slate-500">
+                                {sp.staleClaims} of {sp.totalClaims} claims stale
+                              </p>
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    </section>
+                  )}
 
                   <div className="mt-6 flex flex-col gap-3">
                     {!isPro && (
