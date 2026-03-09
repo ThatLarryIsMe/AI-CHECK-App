@@ -1,109 +1,141 @@
 import Link from "next/link";
 import { getSessionFromCookie } from "@/lib/auth";
 
+function CheckSvg({ className = "" }: { className?: string }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className={`shrink-0 mt-0.5 ${className}`}>
+      <path d="M4 8l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+const freeFeatures = [
+  "10 verifications per day",
+  "Automatic claim extraction",
+  "Evidence-backed verdicts",
+  "Shareable verification reports",
+];
+
+const proFeatures = [
+  "200 verifications per day",
+  "Up to 15 claims per check (vs 5 on Free)",
+  "15,000 character input limit (3x Free)",
+  "URL & PDF fact-checking",
+  "Shareable reports with Trust Score",
+  "Markdown & JSON report exports",
+];
+
+const comparisonRows = [
+  { feature: "Daily verifications", free: "10", pro: "200" },
+  { feature: "Claims per check", free: "5", pro: "15" },
+  { feature: "Character limit", free: "5,000", pro: "15,000" },
+  { feature: "URL fact-checking", free: false, pro: true },
+  { feature: "PDF fact-checking", free: false, pro: true },
+  { feature: "Shareable reports", free: true, pro: true },
+  { feature: "Trust Score badge", free: true, pro: true },
+  { feature: "Export (Markdown/JSON)", free: false, pro: true },
+];
+
+const faqs = [
+  {
+    q: "Can I use ProofMode without an account?",
+    a: "You need a free account to use ProofMode. Creating one takes seconds and gives you 10 free verifications per day.",
+  },
+  {
+    q: "What counts as one verification?",
+    a: "One verification is a single text submission, URL, or PDF. Each verification can contain multiple claims — they're all checked at once.",
+  },
+  {
+    q: "Can I cancel my Pro subscription?",
+    a: "Yes, you can cancel anytime from your Account page. You'll keep Pro access until the end of your billing period.",
+  },
+  {
+    q: "What payment methods do you accept?",
+    a: "We accept all major credit cards through Stripe. Your payment information is never stored on our servers.",
+  },
+];
+
 export default async function PricingPage() {
   const user = await getSessionFromCookie();
   const isPro = user?.plan === "pro" && user?.planStatus === "active";
 
   return (
-    <main className="min-h-screen bg-slate-950 px-6 py-20">
-      <div className="mx-auto max-w-3xl text-center">
-        <p className="mb-3 text-sm font-semibold uppercase tracking-widest text-cyan-400">
-          Simple pricing
-        </p>
-        <h1 className="mb-3 text-4xl font-bold text-white">
-          Start free. Upgrade when you need more.
-        </h1>
-        <p className="mb-14 text-lg text-slate-400 max-w-xl mx-auto">
-          No hidden fees, no per-check charges. Pick the plan that fits how you work
-          and change anytime.
-        </p>
+    <main className="px-6 py-16 md:py-20">
+      <div className="mx-auto max-w-4xl">
+        {/* Header */}
+        <div className="text-center mb-14">
+          <p className="mb-3 text-sm font-semibold uppercase tracking-widest text-brand-400">
+            Pricing
+          </p>
+          <h1 className="text-display-sm md:text-display font-semibold text-white mb-3">
+            Start free. Upgrade when you need more.
+          </h1>
+          <p className="text-lg text-slate-400 max-w-xl mx-auto">
+            No hidden fees, no per-check charges. Pick the plan that fits how you
+            work and change anytime.
+          </p>
+        </div>
 
-        <div className="grid gap-6 sm:grid-cols-2">
-          {/* Free tier */}
-          <div className="rounded-xl border border-slate-700 bg-slate-900 p-8 text-left">
+        {/* Plan cards */}
+        <div className="grid gap-6 sm:grid-cols-2 max-w-2xl mx-auto">
+          {/* Free */}
+          <div className="rounded-xl border border-surface-800/60 bg-surface-900 p-8 text-left">
             <h2 className="mb-1 text-lg font-semibold text-white">Free</h2>
-            <p className="mb-2 text-4xl font-bold text-white">
-              $0<span className="text-base font-normal text-slate-500">/mo</span>
+            <p className="mb-1">
+              <span className="text-3xl font-bold text-white">$0</span>
+              <span className="text-sm text-slate-500 ml-1">/month</span>
             </p>
             <p className="mb-6 text-sm text-slate-400">Perfect for getting started</p>
             <ul className="mb-8 space-y-3 text-sm text-slate-300">
-              <li className="flex items-start gap-2">
-                <span className="mt-0.5 text-cyan-400">&#10003;</span>
-                10 verifications per day
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="mt-0.5 text-cyan-400">&#10003;</span>
-                Automatic claim extraction
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="mt-0.5 text-cyan-400">&#10003;</span>
-                Evidence-backed verdicts
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="mt-0.5 text-cyan-400">&#10003;</span>
-                Shareable verification reports
-              </li>
+              {freeFeatures.map((f) => (
+                <li key={f} className="flex items-start gap-2.5">
+                  <CheckSvg className="text-slate-500" />
+                  {f}
+                </li>
+              ))}
             </ul>
             {!user ? (
               <Link
                 href="/signup"
-                className="block rounded-lg border border-slate-600 px-4 py-2.5 text-center text-sm font-semibold text-slate-300 transition hover:border-slate-400"
+                className="block rounded-lg border border-slate-700 px-4 py-2.5 text-center text-sm font-semibold text-slate-300 transition hover:border-slate-500 hover:text-white"
               >
                 Get started free
               </Link>
             ) : (
-              <span className="block rounded-lg border border-slate-700 px-4 py-2.5 text-center text-sm text-slate-500">
+              <span className="block rounded-lg border border-surface-800/60 px-4 py-2.5 text-center text-sm text-slate-500">
                 {isPro ? "Included" : "Current plan"}
               </span>
             )}
           </div>
 
-          {/* Pro tier */}
-          <div className="relative rounded-xl border-2 border-cyan-500 bg-slate-900 p-8 text-left">
-            <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-cyan-500 px-3 py-0.5 text-xs font-bold text-slate-950">
+          {/* Pro */}
+          <div className="relative rounded-xl border-2 border-brand-600 bg-surface-900 p-8 text-left">
+            <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-brand-600 px-3 py-0.5 text-xs font-bold text-white">
               MOST POPULAR
             </span>
             <h2 className="mb-1 text-lg font-semibold text-white">Pro</h2>
-            <p className="mb-2 text-4xl font-bold text-white">
-              $15<span className="text-base font-normal text-slate-500">/mo</span>
+            <p className="mb-1">
+              <span className="text-3xl font-bold text-white">$15</span>
+              <span className="text-sm text-slate-500 ml-1">/month</span>
             </p>
             <p className="mb-6 text-sm text-slate-400">For daily fact-checkers</p>
             <ul className="mb-8 space-y-3 text-sm text-slate-300">
-              <li className="flex items-start gap-2">
-                <span className="mt-0.5 text-cyan-400">&#10003;</span>
-                200 verifications per day
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="mt-0.5 text-cyan-400">&#10003;</span>
-                Up to 15 claims per check (vs 5 on Free)
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="mt-0.5 text-cyan-400">&#10003;</span>
-                15,000 character input limit (3x Free)
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="mt-0.5 text-cyan-400">&#10003;</span>
-                URL &amp; PDF fact-checking
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="mt-0.5 text-cyan-400">&#10003;</span>
-                Shareable verification reports with Trust Score
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="mt-0.5 text-cyan-400">&#10003;</span>
-                Markdown &amp; JSON report exports
-              </li>
+              {proFeatures.map((f) => (
+                <li key={f} className="flex items-start gap-2.5">
+                  <CheckSvg className="text-brand-500" />
+                  {f}
+                </li>
+              ))}
             </ul>
             {isPro ? (
-              <span className="block rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-4 py-2.5 text-center text-sm font-semibold text-cyan-400">
+              <span className="block rounded-lg border border-brand-600/30 bg-brand-600/10 px-4 py-2.5 text-center text-sm font-semibold text-brand-400">
                 Current plan
               </span>
             ) : user ? (
               <form action="/api/billing/checkout" method="POST">
                 <button
                   type="submit"
-                  className="w-full rounded-lg bg-cyan-500 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
+                  className="w-full rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-500"
                 >
                   Upgrade to Pro
                 </button>
@@ -111,18 +143,85 @@ export default async function PricingPage() {
             ) : (
               <Link
                 href="/signup"
-                className="block rounded-lg bg-cyan-500 px-4 py-2.5 text-center text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
+                className="block rounded-lg bg-brand-600 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-brand-500"
               >
-                Sign up &amp; upgrade
+                Sign up & upgrade
               </Link>
             )}
           </div>
         </div>
 
-        <p className="mt-12 text-sm text-slate-500">
-          All plans include full access during the beta period. Cancel anytime.
-          Pricing may change before general availability.
-        </p>
+        {/* Need more? */}
+        <div className="mt-8 text-center">
+          <p className="text-sm text-slate-500">
+            Need higher limits or team access?{" "}
+            <a href="mailto:hello@proofmode.ai" className="text-brand-400 hover:text-brand-300">
+              Contact us
+            </a>
+          </p>
+        </div>
+
+        {/* Comparison table */}
+        <div className="mt-16">
+          <h2 className="text-heading font-semibold text-white text-center mb-8">
+            Compare plans
+          </h2>
+          <div className="overflow-x-auto">
+            <table className="w-full max-w-2xl mx-auto text-sm">
+              <thead>
+                <tr className="border-b border-surface-800/60 text-left">
+                  <th className="py-3 pr-4 text-slate-400 font-medium">Feature</th>
+                  <th className="py-3 px-4 text-slate-400 font-medium text-center">Free</th>
+                  <th className="py-3 pl-4 text-slate-400 font-medium text-center">Pro</th>
+                </tr>
+              </thead>
+              <tbody>
+                {comparisonRows.map((row) => (
+                  <tr key={row.feature} className="border-b border-surface-800/40">
+                    <td className="py-3 pr-4 text-slate-300">{row.feature}</td>
+                    <td className="py-3 px-4 text-center">
+                      {typeof row.free === "boolean" ? (
+                        row.free ? (
+                          <CheckSvg className="text-slate-500 inline-block" />
+                        ) : (
+                          <span className="text-slate-600">—</span>
+                        )
+                      ) : (
+                        <span className="text-slate-400">{row.free}</span>
+                      )}
+                    </td>
+                    <td className="py-3 pl-4 text-center">
+                      {typeof row.pro === "boolean" ? (
+                        row.pro ? (
+                          <CheckSvg className="text-brand-500 inline-block" />
+                        ) : (
+                          <span className="text-slate-600">—</span>
+                        )
+                      ) : (
+                        <span className="text-white font-medium">{row.pro}</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* FAQ */}
+        <div className="mt-20">
+          <h2 className="text-heading font-semibold text-white text-center mb-8">
+            Frequently asked questions
+          </h2>
+          <div className="max-w-2xl mx-auto space-y-6">
+            {faqs.map((faq) => (
+              <div key={faq.q} className="border-b border-surface-800/40 pb-6">
+                <h3 className="font-medium text-white mb-2">{faq.q}</h3>
+                <p className="text-sm text-slate-400 leading-relaxed">{faq.a}</p>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </main>
   );

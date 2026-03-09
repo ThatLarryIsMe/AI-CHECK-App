@@ -1,239 +1,307 @@
 import Link from "next/link";
-import { VERSION } from "@/../../version";
 import { pool } from "@/lib/db";
 
 async function getGlobalStats(): Promise<{ totalClaims: number; totalPacks: number }> {
-    try {
-        const [claimsResult, packsResult] = await Promise.all([
-            pool.query<{ count: string }>(`SELECT COUNT(*) AS count FROM claims`),
-            pool.query<{ count: string }>(`SELECT COUNT(*) AS count FROM packs`),
-        ]);
-        return {
-            totalClaims: parseInt(claimsResult.rows[0]?.count ?? "0", 10),
-            totalPacks: parseInt(packsResult.rows[0]?.count ?? "0", 10),
-        };
-    } catch {
-        return { totalClaims: 0, totalPacks: 0 };
-    }
+  try {
+    const [claimsResult, packsResult] = await Promise.all([
+      pool.query<{ count: string }>(`SELECT COUNT(*) AS count FROM claims`),
+      pool.query<{ count: string }>(`SELECT COUNT(*) AS count FROM packs`),
+    ]);
+    return {
+      totalClaims: parseInt(claimsResult.rows[0]?.count ?? "0", 10),
+      totalPacks: parseInt(packsResult.rows[0]?.count ?? "0", 10),
+    };
+  } catch {
+    return { totalClaims: 0, totalPacks: 0 };
+  }
 }
 
 function formatNumber(n: number): string {
-    if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
-    if (n >= 1_000) return (n / 1_000).toFixed(1).replace(/\.0$/, "") + "K";
-    return n.toLocaleString();
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
+  if (n >= 1_000) return (n / 1_000).toFixed(1).replace(/\.0$/, "") + "K";
+  return n.toLocaleString();
+}
+
+const useCases = [
+  {
+    title: "News Articles",
+    desc: "Drop a URL and get every claim verified with sources before you share or cite.",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="14" height="14" rx="2" />
+        <path d="M3 8h14M8 8v9" />
+      </svg>
+    ),
+  },
+  {
+    title: "AI-Generated Content",
+    desc: "Paste ChatGPT or Claude output to catch hallucinations and verify factual accuracy.",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M10 2v4M10 14v4M2 10h4M14 10h4M4.93 4.93l2.83 2.83M12.24 12.24l2.83 2.83M15.07 4.93l-2.83 2.83M7.76 12.24l-2.83 2.83" />
+      </svg>
+    ),
+  },
+  {
+    title: "Research Papers",
+    desc: "Upload a PDF to verify cited statistics, dates, and factual claims in academic work.",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2H6a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V6l-4-4z" />
+        <path d="M12 2v4h4M8 10h4M8 14h4M8 6h1" />
+      </svg>
+    ),
+  },
+  {
+    title: "Social Media Posts",
+    desc: "Copy any viral post and get the facts checked before it spreads further.",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M18 5a3 3 0 11-6 0 3 3 0 016 0zM8 15a3 3 0 11-6 0 3 3 0 016 0zM18 15a3 3 0 11-6 0 3 3 0 016 0z" />
+        <path d="M7.5 13.5l5-5M7.5 6.5l5 5" />
+      </svg>
+    ),
+  },
+  {
+    title: "Your Own Writing",
+    desc: 'Fact-check yourself before publishing. Build credibility with a "Verified by ProofMode" badge.',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2l4 4-9 9H5v-4l9-9z" />
+        <path d="M12 4l4 4" />
+      </svg>
+    ),
+  },
+  {
+    title: "Press Releases",
+    desc: "Verify claims in corporate communications, investor materials, and PR statements.",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 3h14v14H3z" />
+        <path d="M7 7h6M7 10h6M7 13h3" />
+      </svg>
+    ),
+  },
+];
+
+const differentiators = [
+  {
+    label: "Claim-level",
+    desc: "Other tools rate entire websites. ProofMode checks every individual claim with its own evidence and verdict.",
+  },
+  {
+    label: "Transparent",
+    desc: "See the sources, confidence scores, and reasoning behind every verdict. No black boxes.",
+  },
+  {
+    label: "Nuanced",
+    desc: "Three-tier verdicts (Supported, Mixed, Unsupported) handle ambiguity honestly instead of forcing binary true/false.",
+  },
+  {
+    label: "Time-aware",
+    desc: "Facts have a shelf life. ProofMode tracks claim freshness and alerts you when verifications need updating.",
+  },
+];
+
+function CheckIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0 mt-0.5 text-brand-500">
+      <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M5 8l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
 }
 
 export default async function Home() {
-    const stats = await getGlobalStats();
-    const showCounter = stats.totalClaims > 0;
+  const stats = await getGlobalStats();
+  const showCounter = stats.totalClaims > 0;
 
-    return (
-          <main className="min-h-screen bg-slate-950 text-white flex flex-col">
-            {/* Hero */}
-                <section className="flex flex-col items-center justify-center flex-1 px-6 py-24 text-center">
-                        <p className="mb-4 text-sm font-semibold uppercase tracking-widest text-cyan-400">
-                            AI-powered claim verification
-                        </p>
-                        <h1 className="text-5xl sm:text-6xl font-black text-white mb-6 max-w-3xl leading-tight">
-                            Know what&apos;s true <span className="text-cyan-400">before you share it</span>
-                        </h1>
-                        <p className="text-xl text-slate-300 max-w-2xl mb-10 leading-relaxed">
-                            Paste text, drop a URL, or upload a PDF. ProofMode extracts every factual claim,
-                            verifies each one against real sources, and delivers a shareable Trust Score
-                            report — all in seconds.
-                        </p>
-                        <ul className="text-slate-200 text-left max-w-xl w-full space-y-4 mb-12">
-                                  <li className="flex items-start gap-3">
-                                              <span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-cyan-500/20 text-xs text-cyan-400">&#10003;</span>
-                                              <span><strong className="text-white">Claim-level analysis</strong> — not site ratings. Every individual factual statement is extracted and verified independently</span>
-                                  </li>
-                                  <li className="flex items-start gap-3">
-                                              <span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-cyan-500/20 text-xs text-cyan-400">&#10003;</span>
-                                              <span><strong className="text-white">Evidence you can see</strong> — each claim is rated Supported, Mixed, or Unsupported with linked sources and confidence scores</span>
-                                  </li>
-                                  <li className="flex items-start gap-3">
-                                              <span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-cyan-500/20 text-xs text-cyan-400">&#10003;</span>
-                                              <span><strong className="text-white">Trust Score reports</strong> — shareable verification reports with an embeddable trust badge for your website</span>
-                                  </li>
-                                  <li className="flex items-start gap-3">
-                                              <span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-cyan-500/20 text-xs text-cyan-400">&#10003;</span>
-                                              <span><strong className="text-white">Any format</strong> — paste text, enter a URL, or upload a PDF. Check news articles, AI-generated content, research papers, social posts</span>
-                                  </li>
-                        </ul>
-                        <div className="flex gap-4 flex-wrap justify-center">
-                                  <Link
-                                                href="/verify"
-                                                className="glow-cta px-8 py-3.5 bg-cyan-500 text-slate-950 rounded-lg font-bold text-lg hover:bg-cyan-400 transition"
-                                              >
-                                              Start Checking Facts
-                                  </Link>
-                                  <Link
-                                                href="/trust"
-                                                className="px-8 py-3.5 border border-slate-600 text-slate-300 rounded-lg font-medium hover:border-slate-400 hover:text-white transition"
-                                              >
-                                              How It Works
-                                  </Link>
-                        </div>
-                        <p className="mt-6 text-sm text-slate-500">
-                            Free to use — no credit card required
-                        </p>
+  return (
+    <main className="flex flex-col">
+      {/* Hero */}
+      <section className="flex flex-col items-center justify-center px-6 py-24 md:py-32 lg:py-40 text-center">
+        <p className="mb-5 text-sm font-semibold uppercase tracking-widest text-brand-400">
+          AI-powered claim verification
+        </p>
+        <h1 className="text-display-sm md:text-display lg:text-display-lg font-bold text-white max-w-3xl">
+          Know what&apos;s true{" "}
+          <span className="text-brand-400">before you share it</span>
+        </h1>
+        <p className="mt-6 text-lg text-slate-400 max-w-2xl leading-relaxed">
+          Paste text, drop a URL, or upload a PDF. ProofMode extracts every factual
+          claim, verifies each one against real sources, and delivers a shareable
+          Trust Score report.
+        </p>
 
-                        {/* Live counter */}
-                        {showCounter && (
-                            <div className="mt-8 counter-animate flex items-center gap-6 rounded-xl border border-slate-800 bg-slate-900/60 px-8 py-4">
-                                <div className="text-center">
-                                    <p className="text-2xl font-black text-cyan-400">{formatNumber(stats.totalClaims)}</p>
-                                    <p className="text-xs text-slate-500 uppercase tracking-wide">claims verified</p>
-                                </div>
-                                <div className="h-8 w-px bg-slate-700" />
-                                <div className="text-center">
-                                    <p className="text-2xl font-black text-white">{formatNumber(stats.totalPacks)}</p>
-                                    <p className="text-xs text-slate-500 uppercase tracking-wide">reports generated</p>
-                                </div>
-                            </div>
-                        )}
-                </section>
+        <ul className="mt-10 text-left max-w-xl w-full space-y-4">
+          <li className="flex items-start gap-3">
+            <CheckIcon />
+            <span className="text-slate-300">
+              <strong className="text-white font-medium">Claim-level analysis</strong> — every
+              individual factual statement is extracted and verified independently
+            </span>
+          </li>
+          <li className="flex items-start gap-3">
+            <CheckIcon />
+            <span className="text-slate-300">
+              <strong className="text-white font-medium">Evidence you can see</strong> — each
+              claim is rated Supported, Mixed, or Unsupported with linked sources
+            </span>
+          </li>
+          <li className="flex items-start gap-3">
+            <CheckIcon />
+            <span className="text-slate-300">
+              <strong className="text-white font-medium">Trust Score reports</strong> — shareable
+              verification reports with an embeddable trust badge
+            </span>
+          </li>
+          <li className="flex items-start gap-3">
+            <CheckIcon />
+            <span className="text-slate-300">
+              <strong className="text-white font-medium">Any format</strong> — paste text, enter
+              a URL, or upload a PDF
+            </span>
+          </li>
+        </ul>
 
-            {/* How it compares */}
-                <section className="px-6 py-16 border-t border-slate-800">
-                    <div className="max-w-4xl mx-auto">
-                        <h2 className="text-2xl font-bold text-center mb-10">
-                            Why ProofMode is different
-                        </h2>
-                        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4 text-center">
-                            <div>
-                                <p className="text-3xl font-bold text-cyan-400 mb-2">Claim-level</p>
-                                <p className="text-slate-400 text-sm">
-                                    Other tools rate entire websites. ProofMode checks every individual claim
-                                    with its own evidence and verdict.
-                                </p>
-                            </div>
-                            <div>
-                                <p className="text-3xl font-bold text-cyan-400 mb-2">Transparent</p>
-                                <p className="text-slate-400 text-sm">
-                                    See the sources, confidence scores, and reasoning behind every verdict.
-                                    No black boxes.
-                                </p>
-                            </div>
-                            <div>
-                                <p className="text-3xl font-bold text-cyan-400 mb-2">Nuanced</p>
-                                <p className="text-slate-400 text-sm">
-                                    Three-tier verdicts (Supported, Mixed, Unsupported) handle ambiguity honestly
-                                    instead of forcing binary true/false.
-                                </p>
-                            </div>
-                            <div>
-                                <p className="text-3xl font-bold text-cyan-400 mb-2">Time-aware</p>
-                                <p className="text-slate-400 text-sm">
-                                    Facts have a shelf life. ProofMode tracks claim freshness and alerts you
-                                    when your verifications need updating. No one else does this.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </section>
+        <div className="mt-10 flex gap-4 flex-wrap justify-center">
+          <Link
+            href="/verify"
+            className="px-8 py-3.5 bg-brand-600 text-white rounded-lg font-semibold text-lg hover:bg-brand-500 transition shadow-lg shadow-brand-600/20"
+          >
+            Start Checking Facts
+          </Link>
+          <Link
+            href="/trust"
+            className="px-8 py-3.5 border border-slate-700 text-slate-300 rounded-lg font-medium hover:border-slate-500 hover:text-white transition"
+          >
+            How It Works
+          </Link>
+        </div>
 
-            {/* Use cases */}
-                <section className="px-6 py-16 bg-slate-900">
-                    <div className="max-w-3xl mx-auto text-center mb-10">
-                        <h2 className="text-3xl font-bold mb-3">Check anything with claims</h2>
-                        <p className="text-slate-400">Whether you&apos;re verifying news, reviewing AI output, or fact-checking before you publish.</p>
-                    </div>
-                    <div className="max-w-4xl mx-auto grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                        <div className="rounded-xl border border-slate-700 bg-slate-800/50 p-6">
-                            <h3 className="font-semibold text-white mb-2">News Articles</h3>
-                            <p className="text-sm text-slate-400">Drop a URL and get every claim verified with sources before you share or cite.</p>
-                        </div>
-                        <div className="rounded-xl border border-slate-700 bg-slate-800/50 p-6">
-                            <h3 className="font-semibold text-white mb-2">AI-Generated Content</h3>
-                            <p className="text-sm text-slate-400">Paste ChatGPT or Claude output to catch hallucinations and verify factual accuracy.</p>
-                        </div>
-                        <div className="rounded-xl border border-slate-700 bg-slate-800/50 p-6">
-                            <h3 className="font-semibold text-white mb-2">Research Papers</h3>
-                            <p className="text-sm text-slate-400">Upload a PDF to verify cited statistics, dates, and factual claims in academic work.</p>
-                        </div>
-                        <div className="rounded-xl border border-slate-700 bg-slate-800/50 p-6">
-                            <h3 className="font-semibold text-white mb-2">Social Media Posts</h3>
-                            <p className="text-sm text-slate-400">Copy any viral post and get the facts checked before it spreads further.</p>
-                        </div>
-                        <div className="rounded-xl border border-slate-700 bg-slate-800/50 p-6">
-                            <h3 className="font-semibold text-white mb-2">Your Own Writing</h3>
-                            <p className="text-sm text-slate-400">Fact-check yourself before publishing. Build credibility with a &quot;Verified by ProofMode&quot; badge.</p>
-                        </div>
-                        <div className="rounded-xl border border-slate-700 bg-slate-800/50 p-6">
-                            <h3 className="font-semibold text-white mb-2">Press Releases</h3>
-                            <p className="text-sm text-slate-400">Verify claims in corporate communications, investor materials, and PR statements.</p>
-                        </div>
-                    </div>
-                </section>
+        <p className="mt-6 text-sm text-slate-500">
+          Free to use — no credit card required
+        </p>
 
-            {/* Trust Score showcase */}
-                <section className="px-6 py-16 border-t border-slate-800">
-                    <div className="max-w-3xl mx-auto text-center">
-                        <h2 className="text-3xl font-bold mb-3">Every check gets a Trust Score</h2>
-                        <p className="text-slate-400 max-w-xl mx-auto mb-8">
-                            Your verification reports include a visual Trust Score, claim-by-claim breakdowns,
-                            and evidence links. Share them anywhere — embed on your site, post to social media,
-                            or send to your team.
-                        </p>
-                        <div className="inline-flex items-center gap-3 rounded-xl border border-cyan-500/30 bg-cyan-500/5 px-6 py-4">
-                            <svg width="24" height="24" viewBox="0 0 16 16" fill="none">
-                                <circle cx="8" cy="8" r="7" stroke="#22d3ee" strokeWidth="1.5" />
-                                <path d="M5 8l2 2 4-4" stroke="#22d3ee" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                            <span className="font-bold text-cyan-400">Verified by ProofMode — 87% Trust Score</span>
-                            <span className="ml-2 flex items-center gap-1 text-xs">
-                                <span className="h-2 w-2 rounded-full bg-green-500" />
-                                <span className="text-green-400 font-medium">Fresh</span>
-                            </span>
-                        </div>
-                        <p className="mt-4 text-xs text-slate-500">
-                            Embed a live badge on any website — auto-updates with trust score and freshness
-                        </p>
-                    </div>
-                </section>
+        {/* Live counter */}
+        {showCounter && (
+          <div className="mt-10 counter-animate flex items-center gap-8 rounded-xl border border-surface-800/60 bg-surface-900/60 px-8 py-5">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-white">{formatNumber(stats.totalClaims)}</p>
+              <p className="text-xs text-slate-500 uppercase tracking-wide mt-0.5">claims verified</p>
+            </div>
+            <div className="h-8 w-px bg-slate-700/50" />
+            <div className="text-center">
+              <p className="text-2xl font-bold text-white">{formatNumber(stats.totalPacks)}</p>
+              <p className="text-xs text-slate-500 uppercase tracking-wide mt-0.5">reports generated</p>
+            </div>
+          </div>
+        )}
+      </section>
 
-            {/* CTA */}
-                <section className="px-6 py-20 text-center bg-slate-900">
-                        <h2 className="text-3xl font-bold mb-3">Start verifying in 30 seconds</h2>
-                        <p className="text-slate-400 max-w-xl mx-auto mb-8">
-                            Create a free account and get 10 verifications per day.
-                            No credit card required. Upgrade anytime for more checks and deeper analysis.
-                        </p>
-                        <div className="flex gap-4 flex-wrap justify-center">
-                            <Link
-                                        href="/signup"
-                                        className="px-8 py-3 bg-cyan-500 text-slate-950 rounded-lg font-bold hover:bg-cyan-400 transition shadow-lg shadow-cyan-500/25"
-                                      >
-                                      Create Free Account
-                            </Link>
-                            <Link
-                                        href="/pricing"
-                                        className="px-8 py-3 border border-slate-600 text-slate-300 rounded-lg font-medium hover:border-slate-400 hover:text-white transition"
-                                      >
-                                      See Pricing
-                            </Link>
-                        </div>
-                        <p className="mt-6 text-sm text-slate-500">
-                                  Already have an account?{" "}
-                                  <Link href="/login" className="text-cyan-400 hover:text-cyan-300">
-                                              Sign in
-                                  </Link>
-                        </p>
-                </section>
+      {/* Differentiators */}
+      <section className="px-6 py-20 border-t border-surface-800/60">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-heading font-semibold text-center mb-12 text-white">
+            Why ProofMode is different
+          </h2>
+          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+            {differentiators.map((d) => (
+              <div key={d.label} className="text-center space-y-2">
+                <p className="text-lg font-semibold text-brand-400">{d.label}</p>
+                <p className="text-sm text-slate-400 leading-relaxed">{d.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
-                <footer className="px-6 py-6 border-t border-slate-800 text-center text-slate-500 text-sm flex items-center justify-center gap-6">
-                        <span>ProofMode v{VERSION}</span>
-                        <Link href="/trust" className="hover:text-slate-300">
-                                  Trust &amp; Methodology
-                        </Link>
-                        <Link href="/pricing" className="hover:text-slate-300">
-                                  Pricing
-                        </Link>
-                        <Link href="/tools" className="hover:text-slate-300">
-                                  Tools
-                        </Link>
-                </footer>
-          </main>
-        );
+      {/* Use cases */}
+      <section className="px-6 py-20 bg-surface-900">
+        <div className="max-w-3xl mx-auto text-center mb-12">
+          <h2 className="text-display-sm font-semibold mb-3 text-white">
+            Check anything with claims
+          </h2>
+          <p className="text-slate-400">
+            Whether you&apos;re verifying news, reviewing AI output, or fact-checking before
+            you publish.
+          </p>
+        </div>
+        <div className="max-w-5xl mx-auto grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {useCases.map((uc) => (
+            <div
+              key={uc.title}
+              className="rounded-xl border border-surface-800/60 bg-surface-950/50 p-6 space-y-3 hover:border-slate-600 transition"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600/10 text-brand-400">
+                {uc.icon}
+              </div>
+              <h3 className="font-semibold text-white">{uc.title}</h3>
+              <p className="text-sm text-slate-400 leading-relaxed">{uc.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Trust Score showcase */}
+      <section className="px-6 py-20 border-t border-surface-800/60">
+        <div className="max-w-3xl mx-auto text-center">
+          <h2 className="text-display-sm font-semibold mb-3 text-white">
+            Every check gets a Trust Score
+          </h2>
+          <p className="text-slate-400 max-w-xl mx-auto mb-10">
+            Your verification reports include a visual Trust Score, claim-by-claim
+            breakdowns, and evidence links. Share them anywhere.
+          </p>
+          <div className="inline-flex items-center gap-3 rounded-xl border border-brand-500/20 bg-brand-500/5 px-6 py-4">
+            <svg width="24" height="24" viewBox="0 0 16 16" fill="none" className="text-brand-500">
+              <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" />
+              <path d="M5 8l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <span className="font-semibold text-brand-400">
+              Verified by ProofMode — 87% Trust Score
+            </span>
+            <span className="ml-2 flex items-center gap-1 text-xs">
+              <span className="h-2 w-2 rounded-full bg-green-500" />
+              <span className="text-green-400 font-medium">Fresh</span>
+            </span>
+          </div>
+          <p className="mt-4 text-xs text-slate-500">
+            Embed a live badge on any website — auto-updates with trust score and freshness
+          </p>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="px-6 py-24 text-center bg-surface-900">
+        <h2 className="text-display-sm font-semibold mb-3 text-white">
+          Start verifying in 30 seconds
+        </h2>
+        <p className="text-slate-400 max-w-xl mx-auto mb-10">
+          Create a free account and get 10 verifications per day. No credit card
+          required. Upgrade anytime for more checks and deeper analysis.
+        </p>
+        <div className="flex gap-4 flex-wrap justify-center">
+          <Link
+            href="/signup"
+            className="px-8 py-3.5 bg-brand-600 text-white rounded-lg font-semibold hover:bg-brand-500 transition shadow-lg shadow-brand-600/20"
+          >
+            Create Free Account
+          </Link>
+          <Link
+            href="/pricing"
+            className="px-8 py-3.5 border border-slate-700 text-slate-300 rounded-lg font-medium hover:border-slate-500 hover:text-white transition"
+          >
+            See Pricing
+          </Link>
+        </div>
+        <p className="mt-8 text-sm text-slate-500">
+          Already have an account?{" "}
+          <Link href="/login" className="text-brand-400 hover:text-brand-300">
+            Sign in
+          </Link>
+        </p>
+      </section>
+    </main>
+  );
 }

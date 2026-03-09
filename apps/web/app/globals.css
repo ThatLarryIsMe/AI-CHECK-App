@@ -2,21 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 :root {
   color-scheme: dark;
 }
 
 body {
-  @apply bg-slate-950 text-slate-100 antialiased;
+  @apply bg-surface-950 text-slate-100 antialiased font-sans;
 }
 
-/* Hero CTA glow pulse */
-@keyframes glow-pulse {
-  0%, 100% { box-shadow: 0 0 20px rgba(34, 211, 238, 0.25); }
-  50% { box-shadow: 0 0 40px rgba(34, 211, 238, 0.45), 0 0 60px rgba(34, 211, 238, 0.15); }
+/* Smooth scroll */
+html {
+  scroll-behavior: smooth;
 }
-.glow-cta {
-  animation: glow-pulse 3s ease-in-out infinite;
+
+/* Selection */
+::selection {
+  @apply bg-brand-500/30 text-white;
 }
 
 /* Counter ticker animation */
@@ -28,22 +31,32 @@ body {
   animation: count-up 0.6s ease-out;
 }
 
-/* Celebration shimmer for high trust scores */
+/* Subtle shimmer for trust badge */
 @keyframes shimmer {
   0% { background-position: -200% center; }
   100% { background-position: 200% center; }
 }
 .trust-shimmer {
-  background: linear-gradient(90deg, transparent 0%, rgba(34, 211, 238, 0.1) 50%, transparent 100%);
+  background: linear-gradient(90deg, transparent 0%, rgba(12, 142, 230, 0.08) 50%, transparent 100%);
   background-size: 200% 100%;
-  animation: shimmer 3s ease-in-out infinite;
+  animation: shimmer 4s ease-in-out infinite;
 }
 
-/* Confetti burst keyframes */
-@keyframes confetti-fall {
-  0% { transform: translateY(-10px) rotate(0deg); opacity: 1; }
-  100% { transform: translateY(60px) rotate(720deg); opacity: 0; }
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
 }
-.confetti-particle {
-  animation: confetti-fall 1.5s ease-out forwards;
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-700 rounded-full;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-slate-600;
+}
+
+/* Focus ring utility */
+.focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:ring-offset-2 focus:ring-offset-surface-950;
 }
