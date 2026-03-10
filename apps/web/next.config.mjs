@@ -12,9 +12,9 @@ const nextConfig = {
       };
     }
     return config;
+  },
   experimental: {
     serverComponentsExternalPackages: ["pdf-parse", "pdfjs-dist"],
   },
 };
-
 export default nextConfig;
