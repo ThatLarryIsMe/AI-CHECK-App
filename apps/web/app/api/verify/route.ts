@@ -15,14 +15,10 @@ import { extractTextFromPdf } from "@/lib/pdf-extractor";
 // Allow up to 120s for URL/PDF fetch + LLM + retrieval on Vercel
 export const maxDuration = 120;
 
-// Phase P1: Daily cost-control limits
+// Daily cost-control limits
 const DAILY_IP_LIMIT = 25;
 const DAILY_GLOBAL_LIMIT = 500;
-
-// Phase P2.2: Per-user daily cap
-// Phase P3.1: Per-user daily cap is now plan-aware (free=10, pro=200)
-// H2: In-memory rate limiter removed — ineffective on serverless (cold starts).
-// All rate limiting is now DB-backed and atomic.
+const ANONYMOUS_TRIAL_LIMIT = 1; // 1 free check without signup
 
 async function checkDailyLimits(
   _ip: string,
@@ -55,15 +51,25 @@ async function atomicUserRateLimit(
     const since = new Date();
     since.setUTCHours(since.getUTCHours() - 24);
 
-    // Fetch plan info for this user
-    const planResult = await pool.query<{ plan: string; plan_status: string }>(
-          `SELECT plan, plan_status FROM users WHERE id = $1`,
+    // Fetch plan and role info for this user
+    const planResult = await pool.query<{ plan: string; plan_status: string; role: string }>(
+          `SELECT plan, plan_status, role FROM users WHERE id = $1`,
           [userId]
         );
     const plan = planResult.rows[0]?.plan ?? "free";
     const planStatus = planResult.rows[0]?.plan_status ?? "inactive";
+    const role = planResult.rows[0]?.role ?? "user";
     const isPro = planStatus === "active" && plan === "pro";
-    const limit = isPro ? 200 : 10;
+    const isAdmin = role === "admin";
+
+    // Admins get unlimited checks; Pro gets 200; Free gets 2
+    if (isAdmin) {
+      // Still record rate limit row for metrics, but never block
+      await pool.query(`INSERT INTO user_rate_limits (user_id) VALUES ($1)`, [userId]);
+      return { limited: false, isPro: true };
+    }
+
+    const limit = isPro ? 200 : 2;
 
     // Atomic: INSERT only if count is below the limit
     const result = await pool.query<{ id: number }>(
@@ -77,6 +83,28 @@ async function atomicUserRateLimit(
           return { limited: true, message: "Daily user limit reached." };
     }
     return { limited: false, isPro };
+}
+
+// Anonymous trial: 1 free check per IP per day (no signup required)
+async function atomicAnonymousTrialLimit(
+  ip: string
+): Promise<{ limited: true; message: string } | { limited: false }> {
+  const since = new Date();
+  since.setUTCHours(since.getUTCHours() - 24);
+  const result = await pool.query<{ id: number }>(
+    `INSERT INTO rate_limits (ip)
+     SELECT $1
+     WHERE (SELECT COUNT(*) FROM rate_limits WHERE ip = $1 AND created_at >= $2) < $3
+     RETURNING id`,
+    [ip, since.toISOString(), ANONYMOUS_TRIAL_LIMIT]
+  );
+  if (result.rows.length === 0) {
+    return {
+      limited: true,
+      message: "You've used your free trial check. Sign up free for 2 checks per day!",
+    };
+  }
+  return { limited: false };
 }
 
 // Atomic IP rate limit insert — only inserts if under the daily IP limit
@@ -94,14 +122,7 @@ async function atomicIpRateLimit(ip: string): Promise<boolean> {
 }
 
 export async function POST(request: NextRequest) {
-  // Phase P2.1: Require authenticated session
   const sessionUser = await getUserFromRequest(request);
-  if (!sessionUser) {
-    return NextResponse.json(
-      { error: "Authentication required. Please sign in." },
-      { status: 401 }
-    );
-  }
 
   const ip =
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
@@ -160,30 +181,59 @@ export async function POST(request: NextRequest) {
     text = text.slice(0, 10_000);
   }
 
-  // H1: Atomic per-user daily cap (check + insert in one query)
-  const userCapCheck = await atomicUserRateLimit(sessionUser.userId);
-  if (userCapCheck.limited) {
-    console.warn(
-      JSON.stringify({
-        level: "warn",
-        event: "user_rate_limited",
-        userId: sessionUser.userId,
-        ip,
-        timestamp: new Date().toISOString(),
-      })
-    );
-    return NextResponse.json({ error: userCapCheck.message }, { status: 429 });
+  // Rate limiting — anonymous vs authenticated
+  let isPro = false;
+  const userId = sessionUser?.userId ?? null;
+
+  if (!sessionUser) {
+    // Anonymous trial: 1 free check per IP per day
+    const trialCheck = await atomicAnonymousTrialLimit(ip);
+    if (trialCheck.limited) {
+      return NextResponse.json(
+        { error: trialCheck.message, needsSignup: true },
+        { status: 429 }
+      );
+    }
+  } else {
+    // Authenticated: per-user daily cap
+    const userCapCheck = await atomicUserRateLimit(sessionUser.userId);
+    if (userCapCheck.limited) {
+      console.warn(
+        JSON.stringify({
+          level: "warn",
+          event: "user_rate_limited",
+          userId,
+          ip,
+          timestamp: new Date().toISOString(),
+        })
+      );
+      return NextResponse.json({ error: userCapCheck.message }, { status: 429 });
+    }
+    isPro = userCapCheck.isPro;
+
+    // IP rate limit (Pro users exempt)
+    if (!isPro) {
+      const ipLimited = await atomicIpRateLimit(ip);
+      if (ipLimited) {
+        return NextResponse.json(
+          { error: "Daily per-IP limit reached." },
+          { status: 429 }
+        );
+      }
+    } else {
+      await pool.query(`INSERT INTO rate_limits (ip) VALUES ($1)`, [ip]);
+    }
   }
 
   // Daily cost-control: global limit check
-  const dailyCheck = await checkDailyLimits(ip, userCapCheck.isPro);
+  const dailyCheck = await checkDailyLimits(ip, isPro);
   if (dailyCheck.limited) {
     console.error(
       JSON.stringify({
         level: "warn",
         event: "rate_limited",
         ip,
-        userId: sessionUser.userId,
+        userId,
         reason: dailyCheck.message,
         timestamp: new Date().toISOString(),
       })
@@ -191,22 +241,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: dailyCheck.message }, { status: 429 });
   }
 
-  // H1: Atomic IP rate limit (Pro users exempt from per-IP limit)
-  if (!userCapCheck.isPro) {
-    const ipLimited = await atomicIpRateLimit(ip);
-    if (ipLimited) {
-      return NextResponse.json(
-        { error: "Daily per-IP limit reached." },
-        { status: 429 }
-      );
-    }
-  } else {
-    // Pro users: still record IP for global count but skip IP limit check
-    await pool.query(`INSERT INTO rate_limits (ip) VALUES ($1)`, [ip]);
-  }
-
-  // Phase P2.1: pass userId so jobs.user_id is populated
-  const job = await createJob(text, sessionUser.userId);
+  const job = await createJob(text, userId ?? undefined);
   const jobId = job.id;
 
   // Process verification synchronously — serverless-safe (C2 fix)
@@ -215,6 +250,7 @@ export async function POST(request: NextRequest) {
   await markProcessing(jobId);
   try {
     const pack = await runVerification(text, jobId, {
+      isPro,
       onTelemetry: (payload) => {
         telemetry = payload;
       },
@@ -242,7 +278,7 @@ export async function POST(request: NextRequest) {
         level: "info",
         event: "job_completed",
         jobId,
-        userId: sessionUser.userId,
+        userId,
         totalDurationMs: durationMs,
         llmDurationMs: tel?.llmDurationMs ?? null,
         retrievalDurationMs: tel?.retrievalDurationMs ?? null,
@@ -281,7 +317,7 @@ export async function POST(request: NextRequest) {
         level: "error",
         event: "job_failed",
         jobId,
-        userId: sessionUser.userId,
+        userId,
         totalDurationMs: durationMs,
         llmDurationMs: tel?.llmDurationMs ?? null,
         retrievalDurationMs: tel?.retrievalDurationMs ?? null,

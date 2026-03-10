@@ -27,6 +27,7 @@ export async function GET(
   const supported = claims.filter((c) => c.status === "supported").length;
   const mixed = claims.filter((c) => c.status === "mixed").length;
   const unsupported = claims.filter((c) => c.status === "unsupported").length;
+  const insufficient = claims.filter((c) => c.status === "insufficient").length;
   const avgConfidence =
     total > 0
       ? Math.round(
@@ -55,9 +56,10 @@ export async function GET(
     `| Metric | Value |`,
     `|--------|-------|`,
     `| Total claims | ${total} |`,
-    `| Supported | ${supported} |`,
-    `| Mixed / Not enough info | ${mixed} |`,
-    `| Unsupported / Refuted | ${unsupported} |`,
+    `| Supported (evidence confirms) | ${supported} |`,
+    `| Conflicting sources | ${mixed} |`,
+    `| Refuted (evidence contradicts) | ${unsupported} |`,
+    `| Insufficient evidence | ${insufficient} |`,
     `| Avg confidence | ${avgConfidence}% |`,
     `| Evidence sources | ${evidence.length} |`,
     ``,
@@ -71,7 +73,10 @@ export async function GET(
     lines.push(`### ${claim.text}`);
     lines.push(``);
     lines.push(`- **Classification:** ${claim.status}`);
-    lines.push(`- **Confidence:** ${claim.confidence}%`);
+    lines.push(`- **Confidence:** ${Math.round((claim.confidence ?? 0) * 100)}%`);
+    if ((claim as Record<string, unknown>).reasoning) {
+      lines.push(`- **Reasoning:** ${(claim as Record<string, unknown>).reasoning}`);
+    }
     lines.push(``);
     lines.push(`#### Evidence`);
     lines.push(``);
@@ -107,7 +112,13 @@ export async function GET(
     );
   }
   lines.push(
-    `- **Confidence scores** are model-internal estimates and do not represent empirical probabilities.`
+    `- **Verdicts** are based exclusively on retrieved web evidence, not on AI internal knowledge.`
+  );
+  lines.push(
+    `- **Confidence scores** reflect evidence strength (0 = no evidence, 1 = overwhelming multi-source evidence).`
+  );
+  lines.push(
+    `- Claims marked "Insufficient evidence" could not be verified or refuted from available sources.`
   );
   lines.push(``);
   lines.push(`## Disclaimer`);
