@@ -34,7 +34,7 @@ function saveToHistory(packId: string, snippet: string) {
 
 const STEPS = ["Extracting text", "Analyzing claims", "Verifying facts", "Building report"];
 
-export function VerifyClient({ plan = "free", planStatus = "inactive", role = "user" }: { plan?: string; planStatus?: string; role?: string }) {
+export function VerifyClient({ plan = "free", planStatus = "inactive", role = "user", isAnonymous = false }: { plan?: string; planStatus?: string; role?: string; isAnonymous?: boolean }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<InputTab>("text");
@@ -71,8 +71,8 @@ export function VerifyClient({ plan = "free", planStatus = "inactive", role = "u
 
   const isPro = plan === "pro" && planStatus === "active";
   const isAdmin = role === "admin";
-  const dailyLimit = isAdmin ? Infinity : isPro ? 200 : 2;
-  const charLimit = isPro || isAdmin ? 15000 : 5000;
+  const dailyLimit = isAdmin ? Infinity : isPro ? 200 : isAnonymous ? 1 : 2;
+  const charLimit = isPro || isAdmin ? 15000 : 10000;
 
   async function extractFromUrl(): Promise<string> {
     const res = await fetch("/api/extract-url", {
@@ -138,7 +138,11 @@ export function VerifyClient({ plan = "free", planStatus = "inactive", role = "u
         return;
       }
       if (!response.ok) {
-        const data = (await response.json().catch(() => ({}))) as { error?: string };
+        const data = (await response.json().catch(() => ({}))) as { error?: string; needsSignup?: boolean };
+        if (data.needsSignup) {
+          router.push("/signup");
+          return;
+        }
         throw new Error(data.error ?? `Server error ${response.status} — please try again.`);
       }
       const data = (await response.json()) as { jobId: string; packId?: string };
@@ -212,9 +216,14 @@ export function VerifyClient({ plan = "free", planStatus = "inactive", role = "u
           {/* Plan usage */}
           <div className="mb-5 flex items-center gap-3 text-xs text-slate-500">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-800/60 px-3 py-1">
-              {isAdmin ? "Admin" : isPro ? "Pro" : "Free"}: {isAdmin ? "unlimited" : dailyLimit} checks / day
+              {isAdmin ? "Admin" : isPro ? "Pro" : isAnonymous ? "Trial" : "Free"}: {isAdmin ? "unlimited" : dailyLimit} {dailyLimit === 1 ? "check" : "checks"} / day
             </span>
-            {!isPro && (
+            {isAnonymous && (
+              <Link href="/signup" className="text-brand-400 hover:text-brand-300">
+                Sign up for 2 free checks/day
+              </Link>
+            )}
+            {!isPro && !isAnonymous && (
               <Link href="/pricing" className="text-brand-400 hover:text-brand-300">
                 Need more?
               </Link>

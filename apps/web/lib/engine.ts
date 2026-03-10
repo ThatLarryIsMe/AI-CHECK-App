@@ -4,7 +4,7 @@ import { classifyClaim } from "./classifier";
 import { retrieveEvidence } from "./retrieval";
 
 const ENGINE_VERSION = process.env.ENGINE_VERSION ?? "1.0.0-lite";
-const MAX_INPUT_LENGTH_FREE = 5_000;
+const MAX_INPUT_LENGTH_FREE = 10_000;
 const MAX_INPUT_LENGTH_PRO = 15_000;
 const MAX_CLAIMS_FREE = 5;
 const MAX_CLAIMS_PRO = 15;

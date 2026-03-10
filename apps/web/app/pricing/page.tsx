@@ -11,6 +11,8 @@ function CheckSvg({ className = "" }: { className?: string }) {
 
 const freeFeatures = [
   "2 verifications per day",
+  "10,000 character inputs",
+  "URL & PDF fact-checking",
   "Source-backed verdicts with reasoning",
   "Shareable Trust Score reports",
   "Embeddable verification badge",
@@ -27,10 +29,11 @@ const proFeatures = [
 
 const comparisonRows = [
   { feature: "Daily verifications", free: "2", pro: "200" },
+  { feature: "Anonymous trial check", free: "1 (no signup)", pro: "—" },
   { feature: "Claims per check", free: "5", pro: "15" },
-  { feature: "Character limit", free: "5,000", pro: "15,000" },
-  { feature: "URL fact-checking", free: false, pro: true },
-  { feature: "PDF fact-checking", free: false, pro: true },
+  { feature: "Character limit", free: "10,000", pro: "15,000" },
+  { feature: "URL fact-checking", free: true, pro: true },
+  { feature: "PDF fact-checking", free: true, pro: true },
   { feature: "Shareable reports", free: true, pro: true },
   { feature: "Trust Score badge", free: true, pro: true },
   { feature: "Export (Markdown/JSON)", free: false, pro: true },
@@ -39,7 +42,7 @@ const comparisonRows = [
 const faqs = [
   {
     q: "Can I use ProofMode without an account?",
-    a: "You need a free account to use ProofMode. Creating one takes seconds and gives you 2 free verifications per day.",
+    a: "Yes! You get 1 free trial check without signing up. Create a free account (takes seconds) to get 2 verifications per day.",
   },
   {
     q: "What counts as one verification?",
@@ -71,8 +74,8 @@ export default async function PricingPage() {
             One wrong fact costs more than a subscription.
           </h1>
           <p className="text-lg text-slate-400 max-w-xl mx-auto">
-            Start free with 2 checks a day. Go Pro when accuracy is part of your
-            daily workflow. No per-check fees, no surprises.
+            Try one check free — no signup needed. Create an account for 2 checks a day.
+            Go Pro when accuracy is part of your daily workflow.
           </p>
         </div>
 
@@ -96,10 +99,10 @@ export default async function PricingPage() {
             </ul>
             {!user ? (
               <Link
-                href="/signup"
+                href="/verify"
                 className="block rounded-lg border border-slate-700 px-4 py-2.5 text-center text-sm font-semibold text-slate-300 transition hover:border-slate-500 hover:text-white"
               >
-                Get started free
+                Try it free
               </Link>
             ) : (
               <span className="block rounded-lg border border-surface-800/60 px-4 py-2.5 text-center text-sm text-slate-500">
