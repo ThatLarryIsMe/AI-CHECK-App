@@ -1,3 +1,3 @@
-# @proofmode/infra
+# @factward/infra
 
 Placeholder package for infrastructure tooling.

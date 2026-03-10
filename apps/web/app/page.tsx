@@ -99,7 +99,7 @@ const differentiators = [
   },
   {
     label: "Time-aware freshness",
-    desc: "Facts have a shelf life. ProofMode tracks when claims go stale and tells you when to re-verify.",
+    desc: "Facts have a shelf life. Factward tracks when claims go stale and tells you when to re-verify.",
   },
 ];
 
@@ -128,7 +128,7 @@ export default async function Home() {
           <span className="text-brand-400">Every claim verified.</span>
         </h1>
         <p className="mt-6 text-lg text-slate-400 max-w-2xl leading-relaxed">
-          One wrong fact can cost you your credibility. ProofMode breaks any text into
+          One wrong fact can cost you your credibility. Factward breaks any text into
           individual claims, checks each one against real web sources, and shows you
           exactly what&apos;s supported, what&apos;s not, and what can&apos;t be verified.
         </p>
@@ -223,7 +223,7 @@ export default async function Home() {
             Built for people whose words matter
           </h2>
           <p className="text-slate-400">
-            If your reputation depends on being right, ProofMode is your safety net.
+            If your reputation depends on being right, Factward is your safety net.
           </p>
         </div>
         <div className="max-w-5xl mx-auto grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -259,7 +259,7 @@ export default async function Home() {
               <path d="M5 8l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             <span className="font-semibold text-brand-400">
-              Verified by ProofMode — 87% Trust Score
+              Verified by Factward — 87% Trust Score
             </span>
             <span className="ml-2 flex items-center gap-1 text-xs">
               <span className="h-2 w-2 rounded-full bg-green-500" />

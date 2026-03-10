@@ -1,6 +1,6 @@
 # Beta Ops Runbook
 
-This runbook defines how to safely operate ProofMode's invite-only public beta in production.
+This runbook defines how to safely operate Factward's invite-only public beta in production.
 
 > **P4 Update:** No waitlist. Access is invite-code only — operators provision invite codes manually.
 > > End users sign up at `/signup` with their code and log in at `/login`.
@@ -14,7 +14,7 @@ This runbook defines how to safely operate ProofMode's invite-only public beta i
 > >    3. 3. Logging in at `/login` — session cookie (`pm_session`) is set automatically.
 > >       4. 4. Navigating to `/verify` — server-side gate redirects unauthenticated users to `/login`.
 > >         
-> >          5. There is no waitlist. There is no `x-proofmode-key` involved in the end-user flow.
+> >          5. There is no waitlist. There is no `x-factward-key` involved in the end-user flow.
 > >         
 > >          6. ## 2) Admin / API key policy
 > >         
@@ -35,20 +35,20 @@ This runbook defines how to safely operate ProofMode's invite-only public beta i
 > >         
 > >          6. ## 4) Admin route access (header-only)
 
-All admin routes require `x-proofmode-key`. End-user routes use session cookies.
+All admin routes require `x-factward-key`. End-user routes use session cookies.
 
 ### Check admin health stats
 
 ```bash
 curl -sS -X GET https://YOUR_DOMAIN/api/admin/health \
-  -H "x-proofmode-key: YOUR_BETA_KEY"
+  -H "x-factward-key: YOUR_BETA_KEY"
 ```
 
 ### Check aggregate admin stats
 
 ```bash
 curl -sS -X GET https://YOUR_DOMAIN/api/admin/stats \
-  -H "x-proofmode-key: YOUR_BETA_KEY"
+  -H "x-factward-key: YOUR_BETA_KEY"
 ```
 
 ## 5) Fast beta disable procedure

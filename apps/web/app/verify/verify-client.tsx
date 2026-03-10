@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useState, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
-const HISTORY_KEY = "proofmode_history";
+const HISTORY_KEY = "factward_history";
 
 type HistoryEntry = {
   packId: string;

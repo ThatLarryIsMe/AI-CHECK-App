@@ -120,7 +120,7 @@ function renderBadgeSvg(
   <path d="M13 16l3 3 5-5" fill="none" stroke="#22d3ee" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
   <!-- Trust score -->
   <text x="32" y="20" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#e2e8f0">
-    ProofMode
+    Factward
   </text>
   <!-- Divider -->
   <line x1="100" y1="6" x2="100" y2="26" stroke="#475569" stroke-width="1"/>

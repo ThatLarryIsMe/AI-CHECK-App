@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   const access = requireBetaKey(request);
   if (!access.ok) {
     return NextResponse.json(
-      { error: "Unauthorized. Valid x-proofmode-key header required." },
+      { error: "Unauthorized. Valid x-factward-key header required." },
       { status: 401 }
     );
   }

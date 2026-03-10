@@ -1,4 +1,4 @@
-# ProofMode Demo Script
+# Factward Demo Script
 
 Use this as a repeatable demo flow for investor and user calls.
 
@@ -13,13 +13,13 @@ Use this as a repeatable demo flow for investor and user calls.
 
 Suggested narration:
 
-> "ProofMode turns unstructured text into an auditable evidence pack. Instead of a single AI answer, you get claim-level status, confidence, and source snippets you can review and export."
+> "Factward turns unstructured text into an auditable evidence pack. Instead of a single AI answer, you get claim-level status, confidence, and source snippets you can review and export."
 
 ## 3-minute script (deeper)
 
 ### A) Framing (30-45s)
 - "Teams already use AI for drafting, but quality control is inconsistent."
-- "ProofMode provides conservative verification outputs that are easier to review and share."
+- "Factward provides conservative verification outputs that are easier to review and share."
 
 ### B) Product walkthrough (90-120s)
 1. **Landing (`/`)**

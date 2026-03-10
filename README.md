@@ -1,8 +1,8 @@
-# ProofMode
+# Factward
 
 **v0.3.2** — Claim-level verification for professional teams.
 
-ProofMode is a claim-level verification product for professional teams that need structured, auditable assessments of written material. Users submit text, the engine extracts factual claims, classifies each claim with conservative reasoning, and produces an evidence pack designed for downstream review, export, and client-facing reporting.
+Factward is a claim-level verification product for professional teams that need structured, auditable assessments of written material. Users submit text, the engine extracts factual claims, classifies each claim with conservative reasoning, and produces an evidence pack designed for downstream review, export, and client-facing reporting.
 
 ## Architecture
 
@@ -48,7 +48,7 @@ ProofMode is a claim-level verification product for professional teams that need
 - Input length limit: 5,000 characters
 - Rate limiting: 10 requests/minute per IP on verify endpoint
 - Per-claim fallback: claim classification failures degrade to safe fallback output instead of failing the full pack
-- Access gate: `x-proofmode-key` header required on all protected routes (header-only; query param not supported)
+- Access gate: `x-factward-key` header required on all protected routes (header-only; query param not supported)
 - Constant-time key comparison via `crypto.timingSafeEqual` (prevents timing-based key enumeration)
 
 ## Environment variables
@@ -57,7 +57,7 @@ ProofMode is a claim-level verification product for professional teams that need
 |---|---|---|
 | `DATABASE_URL` | Yes | Neon Postgres connection string |
 | `OPENAI_API_KEY` | Yes | OpenAI API key |
-| `BETA_ACCESS_KEY` | Yes | Invite-only beta access key (`x-proofmode-key` header) |
+| `BETA_ACCESS_KEY` | Yes | Invite-only beta access key (`x-factward-key` header) |
 | `BRAVE_API_KEY` | No | Enables Brave Search retrieval layer |
 
 > Note: `ENGINE_VERSION` is no longer an environment variable. Version is managed via `version.ts` at the repo root.
@@ -104,7 +104,7 @@ Set all variables from the table above in Vercel project settings. `BRAVE_API_KE
 4. Run smoke tests:
    - Open `/`
    - Open `/verify` (no key needed for UI load)
-   - Submit a verify request with `x-proofmode-key: <your-key>` header
+   - Submit a verify request with `x-factward-key: <your-key>` header
    - Open the generated evidence pack
    - Export markdown from the pack page
    - Confirm `GET /api/admin/health` returns `{ version, totalJobsToday, ... }` with valid key header

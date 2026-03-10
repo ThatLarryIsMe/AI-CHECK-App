@@ -29,7 +29,7 @@ export function requireBetaKey(
 
   // Header-only: query param key is intentionally NOT supported
   // to prevent key leakage in server logs and proxy headers.
-  const providedKey = (req.headers as Headers).get("x-proofmode-key")?.trim();
+  const providedKey = (req.headers as Headers).get("x-factward-key")?.trim();
 
   if (!providedKey || !safeCompare(providedKey, expectedKey)) {
     return {

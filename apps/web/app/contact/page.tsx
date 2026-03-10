@@ -35,7 +35,7 @@ export default function ContactPage() {
         form.message,
         "",
         "---",
-        "Sent from ProofMode Contact Form",
+        "Sent from Factward Contact Form",
       ].join("\n")
     );
 
@@ -47,7 +47,7 @@ export default function ContactPage() {
       <div className="w-full max-w-lg">
         <h1 className="text-3xl font-bold text-white mb-2">Contact Us</h1>
         <p className="text-slate-400 mb-8">
-          Interested in ProofMode for your team or enterprise? Fill out the form
+          Interested in Factward for your team or enterprise? Fill out the form
           below and we&apos;ll get back to you.
         </p>
 

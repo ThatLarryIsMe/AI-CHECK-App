@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import type { EvidencePack } from "@proofmode/core";
+import type { EvidencePack } from "@factward/core";
 
 type ClaimWithEvidence = EvidencePack["claims"][number] & {
   classification?: string;
@@ -184,13 +184,13 @@ export function ReportClient({
   }
 
   function handleShareTwitter() {
-    const text = `I just verified ${stats.total} claims with ProofMode AI — Trust Score: ${stats.trustScore}%\n\n${stats.supported} supported, ${stats.unsupported} unsupported.`;
+    const text = `I just verified ${stats.total} claims with Factward AI — Trust Score: ${stats.trustScore}%\n\n${stats.supported} supported, ${stats.unsupported} unsupported.`;
     const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(reportUrl)}`;
     window.open(url, "_blank", "noopener,noreferrer");
   }
 
   function handleCopyEmbed() {
-    const embedCode = `<a href="${reportUrl}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:#0f172a;border:1px solid #22d3ee;border-radius:8px;color:#22d3ee;font-family:system-ui;font-size:13px;font-weight:600;text-decoration:none"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="#22d3ee" stroke-width="1.5"/><path d="M5 8l2 2 4-4" stroke="#22d3ee" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Verified by ProofMode — ${stats.trustScore}% Trust Score</a>`;
+    const embedCode = `<a href="${reportUrl}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:#0f172a;border:1px solid #22d3ee;border-radius:8px;color:#22d3ee;font-family:system-ui;font-size:13px;font-weight:600;text-decoration:none"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="#22d3ee" stroke-width="1.5"/><path d="M5 8l2 2 4-4" stroke="#22d3ee" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Verified by Factward — ${stats.trustScore}% Trust Score</a>`;
     void navigator.clipboard.writeText(embedCode).then(() => {
       setEmbedCopyState("copied");
       setTimeout(() => setEmbedCopyState("idle"), 2000);
@@ -198,7 +198,7 @@ export function ReportClient({
   }
 
   function handleCopyWidget() {
-    const widgetCode = `<div data-proofmode-badge="${packId}"></div>\n<script src="${origin}/badge.js" async></script>`;
+    const widgetCode = `<div data-factward-badge="${packId}"></div>\n<script src="${origin}/badge.js" async></script>`;
     void navigator.clipboard.writeText(widgetCode).then(() => {
       setWidgetCopyState("copied");
       setTimeout(() => setWidgetCopyState("idle"), 2000);
@@ -228,7 +228,7 @@ export function ReportClient({
         {/* Header */}
         <div className="mb-8 text-center">
           <p className="mb-2 text-sm font-semibold uppercase tracking-widest text-cyan-400">
-            ProofMode Verification Report
+            Factward Verification Report
           </p>
           <h1 className="text-3xl font-bold text-white">Fact-Check Results</h1>
           <p className="mt-2 text-sm text-slate-500">
@@ -348,7 +348,7 @@ export function ReportClient({
                       <circle cx="8" cy="8" r="7" stroke="#22d3ee" strokeWidth="1.5" />
                       <path d="M5 8l2 2 4-4" stroke="#22d3ee" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
-                    Verified by ProofMode — {stats.trustScore}% Trust Score
+                    Verified by Factward — {stats.trustScore}% Trust Score
                   </span>
                 </div>
                 <button
@@ -366,7 +366,7 @@ export function ReportClient({
                 </p>
                 <div className="mb-3 rounded-lg border border-slate-600 bg-slate-900 p-3">
                   <code className="block text-xs text-slate-300 whitespace-pre-wrap break-all">
-                    {`<div data-proofmode-badge="${packId}"></div>\n<script src="${origin}/badge.js" async></script>`}
+                    {`<div data-factward-badge="${packId}"></div>\n<script src="${origin}/badge.js" async></script>`}
                   </code>
                 </div>
                 <div className="mb-3">
@@ -475,7 +475,7 @@ export function ReportClient({
         <div className="mt-10 rounded-xl border border-slate-800 bg-slate-900/50 p-6 text-sm text-slate-400">
           <h3 className="mb-2 font-semibold text-slate-300">About this report</h3>
           <p>
-            This verification was performed by ProofMode v{version}. Claims are extracted from
+            This verification was performed by Factward v{version}. Claims are extracted from
             input text, then each claim is checked against web evidence retrieved from multiple
             search queries. Verdicts are based ONLY on retrieved evidence — never on AI knowledge
             alone. Claims without sufficient evidence are marked &ldquo;Insufficient Evidence&rdquo;
@@ -512,7 +512,7 @@ export function ReportClient({
             Don&apos;t publish without checking first.
           </h3>
           <p className="mb-4 text-sm text-slate-400">
-            ProofMode verifies every claim in your text against real web sources —
+            Factward verifies every claim in your text against real web sources —
             so you never have to wonder if you got it right.
           </p>
           <Link

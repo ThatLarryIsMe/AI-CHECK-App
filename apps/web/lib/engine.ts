@@ -1,4 +1,4 @@
-import { EvidencePackSchema, type EvidencePack } from "@proofmode/core";
+import { EvidencePackSchema, type EvidencePack } from "@factward/core";
 import { extractClaims } from "./claim-extractor";
 import { classifyClaim } from "./classifier";
 import { retrieveEvidence } from "./retrieval";

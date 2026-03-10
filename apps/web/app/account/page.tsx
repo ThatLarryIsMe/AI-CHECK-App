@@ -3,7 +3,7 @@ import Link from "next/link"
 import { getSessionFromCookie } from "@/lib/auth"
 import { pool } from "@/lib/db"
 import { analyzePackDecay } from "@/lib/decay"
-import type { EvidencePack } from "@proofmode/core"
+import type { EvidencePack } from "@factward/core"
 
 async function getUsageToday(userId: string, plan: string, planStatus: string, role: string): Promise<{ used: number; limit: number }> {
       try {

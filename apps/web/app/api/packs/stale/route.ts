@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getUserFromRequest } from "@/lib/auth";
 import { pool } from "@/lib/db";
 import { analyzePackDecay } from "@/lib/decay";
-import type { EvidencePack } from "@proofmode/core";
+import type { EvidencePack } from "@factward/core";
 
 /**
  * GET /api/packs/stale

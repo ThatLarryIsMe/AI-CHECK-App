@@ -53,7 +53,7 @@ export default function AdminReportPage() {
     setLoadState("loading");
     setErrorMsg(null);
     try {
-      const headers = { "x-proofmode-key": key };
+      const headers = { "x-factward-key": key };
       const [statsRes, healthRes] = await Promise.all([
         fetch("/api/admin/stats", { headers }),
         fetch("/api/admin/health", { headers }),
@@ -109,7 +109,7 @@ export default function AdminReportPage() {
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">ProofMode Admin</h1>
+            <h1 className="text-3xl font-bold">Factward Admin</h1>
             <p className="mt-1 text-sm text-slate-400">
               Weekly ops report &mdash; {reportDate}
             </p>
@@ -132,7 +132,7 @@ export default function AdminReportPage() {
               Beta access key
             </label>
             <p className="mt-1 text-xs text-slate-500">
-              Enter your <code>x-proofmode-key</code> to load the report.
+              Enter your <code>x-factward-key</code> to load the report.
             </p>
             <div className="mt-3 flex gap-3">
               <input
@@ -178,7 +178,7 @@ export default function AdminReportPage() {
 
             {/* Refresh + version bar */}
             <div className="flex items-center justify-between rounded-lg bg-slate-900 px-4 py-2 text-xs text-slate-500">
-              <span>ProofMode <span className="text-cyan-400">{health.version}</span></span>
+              <span>Factward <span className="text-cyan-400">{health.version}</span></span>
               <button
                 onClick={handleRefresh}
                 className="rounded px-2 py-1 text-slate-400 transition hover:bg-slate-800 hover:text-cyan-400"
@@ -248,7 +248,7 @@ export default function AdminReportPage() {
             <section>
               <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Weekly Summary Export</h2>
               <pre className="overflow-x-auto rounded-lg bg-slate-900 p-4 text-xs text-slate-300 leading-relaxed">
-{`ProofMode v${health.version} — Admin Report
+{`Factward v${health.version} — Admin Report
 ${reportDate}
 
 Lifetime

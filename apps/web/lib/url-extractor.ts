@@ -25,7 +25,7 @@ export async function extractTextFromUrl(url: string): Promise<string> {
     response = await fetch(url, {
       signal: controller.signal,
       headers: {
-        "User-Agent": "ProofMode/1.0 (fact-checker)",
+        "User-Agent": "Factward/1.0 (fact-checker)",
         Accept: "text/html,application/xhtml+xml,*/*",
       },
       redirect: "follow",

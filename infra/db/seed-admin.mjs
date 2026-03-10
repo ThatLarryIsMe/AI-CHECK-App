@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Seed (or reset) the ProofMode admin user.
+ * Seed (or reset) the Factward admin user.
  *
  * Usage:
  *   DATABASE_URL=postgresql://... ADMIN_EMAIL=admin@example.com ADMIN_PASSWORD=<secret> node infra/db/seed-admin.mjs

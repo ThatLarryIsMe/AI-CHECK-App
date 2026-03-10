@@ -1,4 +1,4 @@
-# ProofMode (AI-CHECK-App) — Production Readiness Audit
+# Factward (AI-CHECK-App) — Production Readiness Audit
 
 **Auditor:** Staff Engineer / Product Architect Review
 **Date:** 2026-03-01
