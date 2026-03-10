@@ -5,20 +5,20 @@ import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
 
 export const metadata: Metadata = {
-  title: "ProofMode — Verify Every Claim Before You Publish",
+  title: "Factward — Verify Every Claim Before You Publish",
   description:
     "The fact-checking tool for professionals who publish. Paste any text, URL, or PDF and get a source-backed verification report in seconds. Every claim checked individually against real evidence.",
   icons: { icon: "/favicon.svg" },
   openGraph: {
-    title: "ProofMode — Verify Every Claim Before You Publish",
+    title: "Factward — Verify Every Claim Before You Publish",
     description:
       "Source-backed fact-checking for professionals. Every claim verified individually against real evidence.",
-    siteName: "ProofMode",
+    siteName: "Factward",
     type: "website",
   },
   twitter: {
     card: "summary",
-    title: "ProofMode — Verify Every Claim Before You Publish",
+    title: "Factward — Verify Every Claim Before You Publish",
     description:
       "Source-backed fact-checking for professionals. Every claim verified individually against real evidence.",
   },
@@ -38,14 +38,13 @@ export default async function RootLayout({
           user={
             navUser
               ? {
-                  plan: navUser.plan,
-                  planStatus: navUser.planStatus,
+                  email: navUser.email,
                   role: navUser.role,
                 }
               : null
           }
         />
-        <div className="flex-1">{children}</div>
+        <main className="flex-1">{children}</main>
         <Footer />
       </body>
     </html>
