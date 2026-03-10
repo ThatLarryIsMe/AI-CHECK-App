@@ -41,6 +41,9 @@ export function Footer() {
               <Link href="/trust#data" className="block text-slate-400 hover:text-white transition">
                 Privacy
               </Link>
+              <Link href="/contact" className="block text-slate-400 hover:text-white transition">
+                Contact Us
+              </Link>
             </div>
           </div>
         </div>
