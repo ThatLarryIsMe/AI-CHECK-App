@@ -509,17 +509,17 @@ export function ReportClient({
         {/* CTA for non-users */}
         <div className="mt-8 rounded-xl border border-cyan-500/30 bg-cyan-500/5 p-6 text-center">
           <h3 className="mb-2 text-lg font-bold text-white">
-            Want to verify your own content?
+            Don&apos;t publish without checking first.
           </h3>
           <p className="mb-4 text-sm text-slate-400">
-            ProofMode breaks down any text into individual claims and checks each one
-            against real sources. Free to start.
+            ProofMode verifies every claim in your text against real web sources —
+            so you never have to wonder if you got it right.
           </p>
           <Link
             href="/signup"
             className="inline-block rounded-lg bg-cyan-500 px-6 py-2.5 font-semibold text-slate-950 transition hover:bg-cyan-400"
           >
-            Start Free
+            Try It Free
           </Link>
         </div>
       </div>

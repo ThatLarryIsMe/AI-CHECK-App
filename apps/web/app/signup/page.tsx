@@ -53,9 +53,9 @@ export default function SignupPage() {
               <path d="M5 8l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
-          <h1 className="text-2xl font-semibold text-white">Create your account</h1>
+          <h1 className="text-2xl font-semibold text-white">Join ProofMode</h1>
           <p className="mt-2 text-sm text-slate-400">
-            Enter your invite code to get started
+            Start verifying claims with real sources in under a minute
           </p>
         </div>
 

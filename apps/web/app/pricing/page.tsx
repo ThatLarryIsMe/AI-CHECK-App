@@ -11,18 +11,18 @@ function CheckSvg({ className = "" }: { className?: string }) {
 
 const freeFeatures = [
   "2 verifications per day",
-  "Automatic claim extraction",
-  "Evidence-backed verdicts",
-  "Shareable verification reports",
+  "Source-backed verdicts with reasoning",
+  "Shareable Trust Score reports",
+  "Embeddable verification badge",
 ];
 
 const proFeatures = [
   "200 verifications per day",
-  "Up to 15 claims per check (vs 5 on Free)",
-  "15,000 character input limit (3x Free)",
+  "Up to 15 claims per check (3x deeper)",
+  "15,000 character inputs (articles, not just snippets)",
   "URL & PDF fact-checking",
-  "Shareable reports with Trust Score",
-  "Markdown & JSON report exports",
+  "Exportable evidence packs (Markdown & JSON)",
+  "API access for your workflow",
 ];
 
 const comparisonRows = [
@@ -68,11 +68,11 @@ export default async function PricingPage() {
             Pricing
           </p>
           <h1 className="text-display-sm md:text-display font-semibold text-white mb-3">
-            Start free. Upgrade when you need more.
+            One wrong fact costs more than a subscription.
           </h1>
           <p className="text-lg text-slate-400 max-w-xl mx-auto">
-            No hidden fees, no per-check charges. Pick the plan that fits how you
-            work and change anytime.
+            Start free with 2 checks a day. Go Pro when accuracy is part of your
+            daily workflow. No per-check fees, no surprises.
           </p>
         </div>
 
@@ -85,7 +85,7 @@ export default async function PricingPage() {
               <span className="text-3xl font-bold text-white">$0</span>
               <span className="text-sm text-slate-500 ml-1">/month</span>
             </p>
-            <p className="mb-6 text-sm text-slate-400">Perfect for getting started</p>
+            <p className="mb-6 text-sm text-slate-400">Try it out, see the quality</p>
             <ul className="mb-8 space-y-3 text-sm text-slate-300">
               {freeFeatures.map((f) => (
                 <li key={f} className="flex items-start gap-2.5">
@@ -118,7 +118,7 @@ export default async function PricingPage() {
               <span className="text-3xl font-bold text-white">$15</span>
               <span className="text-sm text-slate-500 ml-1">/month</span>
             </p>
-            <p className="mb-6 text-sm text-slate-400">For daily fact-checkers</p>
+            <p className="mb-6 text-sm text-slate-400">For professionals who publish</p>
             <ul className="mb-8 space-y-3 text-sm text-slate-300">
               {proFeatures.map((f) => (
                 <li key={f} className="flex items-start gap-2.5">

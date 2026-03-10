@@ -24,8 +24,8 @@ function formatNumber(n: number): string {
 
 const useCases = [
   {
-    title: "News Articles",
-    desc: "Drop a URL and get every claim verified with sources before you share or cite.",
+    title: "Journalists & Editors",
+    desc: "Verify every claim in a story before it goes live. Protect your newsroom from retractions and corrections.",
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="3" width="14" height="14" rx="2" />
@@ -34,8 +34,8 @@ const useCases = [
     ),
   },
   {
-    title: "AI-Generated Content",
-    desc: "Paste ChatGPT or Claude output to catch hallucinations and verify factual accuracy.",
+    title: "AI Content Review",
+    desc: "Don't publish ChatGPT or Claude output without checking it. We catch the hallucinations so your readers never see them.",
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M10 2v4M10 14v4M2 10h4M14 10h4M4.93 4.93l2.83 2.83M12.24 12.24l2.83 2.83M15.07 4.93l-2.83 2.83M7.76 12.24l-2.83 2.83" />
@@ -43,8 +43,8 @@ const useCases = [
     ),
   },
   {
-    title: "Research Papers",
-    desc: "Upload a PDF to verify cited statistics, dates, and factual claims in academic work.",
+    title: "Researchers & Academics",
+    desc: "Upload a PDF and verify cited statistics, dates, and claims. Get the rigor of peer review in seconds, not months.",
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 2H6a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V6l-4-4z" />
@@ -53,8 +53,8 @@ const useCases = [
     ),
   },
   {
-    title: "Social Media Posts",
-    desc: "Copy any viral post and get the facts checked before it spreads further.",
+    title: "Newsletter Writers",
+    desc: "One wrong stat can tank your credibility with thousands of subscribers. Verify before you hit send.",
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M18 5a3 3 0 11-6 0 3 3 0 016 0zM8 15a3 3 0 11-6 0 3 3 0 016 0zM18 15a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -63,8 +63,8 @@ const useCases = [
     ),
   },
   {
-    title: "Your Own Writing",
-    desc: 'Fact-check yourself before publishing. Build credibility with a "Verified by ProofMode" badge.',
+    title: "Content & Marketing Teams",
+    desc: "Catch errors in blog posts, whitepapers, and campaigns before your audience does. Earn trust at scale.",
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M14 2l4 4-9 9H5v-4l9-9z" />
@@ -73,8 +73,8 @@ const useCases = [
     ),
   },
   {
-    title: "Press Releases",
-    desc: "Verify claims in corporate communications, investor materials, and PR statements.",
+    title: "PR & Communications",
+    desc: "Verify claims in press releases and investor materials before they reach reporters who will check anyway.",
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M3 3h14v14H3z" />
@@ -86,20 +86,20 @@ const useCases = [
 
 const differentiators = [
   {
-    label: "Claim-level",
-    desc: "Other tools rate entire websites. ProofMode checks every individual claim with its own evidence and verdict.",
+    label: "Evidence-first",
+    desc: "Every verdict is grounded in real web sources. If we can't find evidence, we say so — we never guess.",
   },
   {
-    label: "Transparent",
-    desc: "See the sources, confidence scores, and reasoning behind every verdict. No black boxes.",
+    label: "Claim-level precision",
+    desc: "We don't rate entire articles. Every individual claim gets its own sources, verdict, and confidence score.",
   },
   {
-    label: "Nuanced",
-    desc: "Three-tier verdicts (Supported, Mixed, Unsupported) handle ambiguity honestly instead of forcing binary true/false.",
+    label: "Show-your-work transparent",
+    desc: "See exactly which sources support or contradict each claim, and the reasoning behind every verdict.",
   },
   {
-    label: "Time-aware",
-    desc: "Facts have a shelf life. ProofMode tracks claim freshness and alerts you when verifications need updating.",
+    label: "Time-aware freshness",
+    desc: "Facts have a shelf life. ProofMode tracks when claims go stale and tells you when to re-verify.",
   },
 ];
 
@@ -121,45 +121,45 @@ export default async function Home() {
       {/* Hero */}
       <section className="flex flex-col items-center justify-center px-6 py-24 md:py-32 lg:py-40 text-center">
         <p className="mb-5 text-sm font-semibold uppercase tracking-widest text-brand-400">
-          AI-powered claim verification
+          Fact-check anything in seconds
         </p>
         <h1 className="text-display-sm md:text-display lg:text-display-lg font-bold text-white max-w-3xl">
-          Know what&apos;s true{" "}
-          <span className="text-brand-400">before you share it</span>
+          Publish with confidence.{" "}
+          <span className="text-brand-400">Every claim verified.</span>
         </h1>
         <p className="mt-6 text-lg text-slate-400 max-w-2xl leading-relaxed">
-          Paste text, drop a URL, or upload a PDF. ProofMode extracts every factual
-          claim, verifies each one against real sources, and delivers a shareable
-          Trust Score report.
+          One wrong fact can cost you your credibility. ProofMode breaks any text into
+          individual claims, checks each one against real web sources, and shows you
+          exactly what&apos;s supported, what&apos;s not, and what can&apos;t be verified.
         </p>
 
         <ul className="mt-10 text-left max-w-xl w-full space-y-4">
           <li className="flex items-start gap-3">
             <CheckIcon />
             <span className="text-slate-300">
-              <strong className="text-white font-medium">Claim-level analysis</strong> — every
-              individual factual statement is extracted and verified independently
+              <strong className="text-white font-medium">Every claim, individually verified</strong> — not
+              a vague &quot;this article seems accurate.&quot; Each factual statement gets its own sources and verdict.
             </span>
           </li>
           <li className="flex items-start gap-3">
             <CheckIcon />
             <span className="text-slate-300">
-              <strong className="text-white font-medium">Evidence you can see</strong> — each
-              claim is rated Supported, Mixed, or Unsupported with linked sources
+              <strong className="text-white font-medium">Sources you can check yourself</strong> — see
+              the web evidence behind every verdict. We show our work so you don&apos;t have to trust ours.
             </span>
           </li>
           <li className="flex items-start gap-3">
             <CheckIcon />
             <span className="text-slate-300">
-              <strong className="text-white font-medium">Trust Score reports</strong> — shareable
-              verification reports with an embeddable trust badge
+              <strong className="text-white font-medium">Honest when it doesn&apos;t know</strong> — claims
+              without sufficient evidence are flagged as &quot;Insufficient,&quot; never guessed.
             </span>
           </li>
           <li className="flex items-start gap-3">
             <CheckIcon />
             <span className="text-slate-300">
-              <strong className="text-white font-medium">Any format</strong> — paste text, enter
-              a URL, or upload a PDF
+              <strong className="text-white font-medium">Text, URLs, or PDFs</strong> — paste an article,
+              drop a link, or upload a research paper. Results in seconds.
             </span>
           </li>
         </ul>
@@ -169,18 +169,18 @@ export default async function Home() {
             href="/verify"
             className="px-8 py-3.5 bg-brand-600 text-white rounded-lg font-semibold text-lg hover:bg-brand-500 transition shadow-lg shadow-brand-600/20"
           >
-            Start Checking Facts
+            Verify Your First Claim Free
           </Link>
           <Link
             href="/trust"
             className="px-8 py-3.5 border border-slate-700 text-slate-300 rounded-lg font-medium hover:border-slate-500 hover:text-white transition"
           >
-            How It Works
+            See How It Works
           </Link>
         </div>
 
         <p className="mt-6 text-sm text-slate-500">
-          Free to use — no credit card required
+          Free to start — no credit card required
         </p>
 
         {/* Live counter */}
@@ -203,7 +203,7 @@ export default async function Home() {
       <section className="px-6 py-20 border-t border-surface-800/60">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-heading font-semibold text-center mb-12 text-white">
-            Why ProofMode is different
+            Not another &quot;AI detector.&quot; A real verification engine.
           </h2>
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
             {differentiators.map((d) => (
@@ -220,11 +220,10 @@ export default async function Home() {
       <section className="px-6 py-20 bg-surface-900">
         <div className="max-w-3xl mx-auto text-center mb-12">
           <h2 className="text-display-sm font-semibold mb-3 text-white">
-            Check anything with claims
+            Built for people whose words matter
           </h2>
           <p className="text-slate-400">
-            Whether you&apos;re verifying news, reviewing AI output, or fact-checking before
-            you publish.
+            If your reputation depends on being right, ProofMode is your safety net.
           </p>
         </div>
         <div className="max-w-5xl mx-auto grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -247,11 +246,12 @@ export default async function Home() {
       <section className="px-6 py-20 border-t border-surface-800/60">
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="text-display-sm font-semibold mb-3 text-white">
-            Every check gets a Trust Score
+            Shareable proof, not just a promise
           </h2>
           <p className="text-slate-400 max-w-xl mx-auto mb-10">
-            Your verification reports include a visual Trust Score, claim-by-claim
-            breakdowns, and evidence links. Share them anywhere.
+            Every check produces a Trust Score report with claim-by-claim evidence
+            you can share with editors, clients, or your audience. Embed the badge on
+            your site.
           </p>
           <div className="inline-flex items-center gap-3 rounded-xl border border-brand-500/20 bg-brand-500/5 px-6 py-4">
             <svg width="24" height="24" viewBox="0 0 16 16" fill="none" className="text-brand-500">
@@ -267,7 +267,7 @@ export default async function Home() {
             </span>
           </div>
           <p className="mt-4 text-xs text-slate-500">
-            Embed a live badge on any website — auto-updates with trust score and freshness
+            Embed a live badge on your site — auto-updates with trust score and freshness
           </p>
         </div>
       </section>
@@ -275,11 +275,11 @@ export default async function Home() {
       {/* CTA */}
       <section className="px-6 py-24 text-center bg-surface-900">
         <h2 className="text-display-sm font-semibold mb-3 text-white">
-          Start verifying in 30 seconds
+          Stop guessing. Start verifying.
         </h2>
         <p className="text-slate-400 max-w-xl mx-auto mb-10">
-          Create a free account and get 2 verifications per day. No credit card
-          required. Upgrade anytime for more checks and deeper analysis.
+          Create a free account, paste your first text, and get a source-backed
+          verification report in under a minute. Upgrade when you need more.
         </p>
         <div className="flex gap-4 flex-wrap justify-center">
           <Link

@@ -203,10 +203,10 @@ export function VerifyClient({ plan = "free", planStatus = "inactive", role = "u
     <main className="flex flex-col items-center px-4 py-12 md:py-16">
       <div className="flex w-full max-w-5xl flex-col lg:flex-row gap-8">
         <section className="flex-1 min-w-0">
-          <h1 className="mb-1 text-display-sm font-semibold text-white">Check any claim</h1>
+          <h1 className="mb-1 text-display-sm font-semibold text-white">Verify before you publish</h1>
           <p className="mb-6 text-slate-400">
-            Paste text, enter a URL, or upload a PDF — we&apos;ll break it down and verify
-            each claim.
+            Paste your text, drop a URL, or upload a PDF. We&apos;ll extract every factual
+            claim and check it against real sources.
           </p>
 
           {/* Plan usage */}
@@ -247,7 +247,7 @@ export function VerifyClient({ plan = "free", planStatus = "inactive", role = "u
                     className="min-h-[160px] w-full resize-y rounded-lg border border-surface-800/60 bg-surface-950 p-4 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500/50 placeholder:text-slate-600"
                     value={text}
                     onChange={(e) => setText(e.target.value)}
-                    placeholder="Paste the text you want to fact-check..."
+                    placeholder="Paste the article, draft, or content you want to verify..."
                     maxLength={charLimit}
                   />
                   <span className="absolute bottom-3 right-3 text-xs text-slate-600">
@@ -259,7 +259,7 @@ export function VerifyClient({ plan = "free", planStatus = "inactive", role = "u
               {activeTab === "url" && (
                 <div className="space-y-2">
                   <p className="text-sm text-slate-400">
-                    Enter the URL of an article or webpage to fact-check.
+                    Paste the URL of any article or webpage. We&apos;ll extract the text and verify every claim.
                   </p>
                   <input
                     type="url"
@@ -274,7 +274,7 @@ export function VerifyClient({ plan = "free", planStatus = "inactive", role = "u
               {activeTab === "pdf" && (
                 <div className="space-y-3">
                   <p className="text-sm text-slate-400">
-                    Upload a PDF document to extract and verify its claims.
+                    Upload a research paper, report, or document. We&apos;ll extract the text and verify every claim.
                   </p>
                   {pdfFile ? (
                     <div className="flex flex-col items-center rounded-lg border-2 border-dashed border-brand-500/30 bg-brand-500/5 p-6 text-center">

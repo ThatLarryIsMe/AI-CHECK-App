@@ -12,23 +12,23 @@ const sections = [
 const pipelineSteps = [
   {
     title: "Input processing",
-    desc: "You submit text, a URL, or a PDF. For URLs, we fetch the page and extract readable text. For PDFs, we parse the document content. The raw text is then passed to claim extraction.",
+    desc: "You submit text, a URL, or a PDF. For URLs, we fetch the page and extract readable content. For PDFs, we parse the document. The text is then passed to claim extraction.",
   },
   {
     title: "Claim extraction",
-    desc: "An AI model reads the text and identifies every distinct, verifiable factual statement. Opinions, questions, and subjective statements are filtered out. Each claim is made self-contained for independent verification.",
+    desc: "An AI model reads your text and identifies every distinct, verifiable factual statement. Opinions, predictions, and subjective statements are filtered out. Each extracted claim is validated against the original text to prevent fabrication.",
   },
   {
     title: "Evidence retrieval",
-    desc: "Each extracted claim is searched against real-time web sources. Relevant source URLs, titles, and snippets are attached as evidence. This happens in parallel for all claims.",
+    desc: "For each claim, we generate optimized search queries and retrieve evidence from multiple web sources. Each claim gets up to 5 independent sources from different angles — not just one search.",
   },
   {
-    title: "Classification",
-    desc: 'A conservative AI classifier evaluates each claim using both its knowledge and the retrieved evidence. It assigns a verdict and confidence score. The classifier defaults to "Mixed" when uncertain — designed to err on the side of caution.',
+    title: "Evidence-grounded classification",
+    desc: 'The classifier sees ONLY the retrieved evidence — never its own internal knowledge. It must cite specific sources in its reasoning. If no relevant evidence exists, the claim is marked "Insufficient Evidence" with 0% confidence. We never guess.',
   },
   {
     title: "Trust Score & report",
-    desc: "All results are compiled into a shareable report with an overall Trust Score. Supported claims score 100%, mixed 50%, and unsupported 0%. The report includes every claim, verdict, confidence score, and linked evidence.",
+    desc: "Results are compiled into a shareable report. The Trust Score is calculated only from verifiable claims — unverifiable claims are excluded so they don't inflate or deflate your score. Every claim shows its verdict, confidence, reasoning, and linked sources.",
   },
 ];
 
@@ -66,9 +66,10 @@ export default function TrustPage() {
                 How ProofMode works
               </h1>
               <p className="text-lg text-slate-400 leading-relaxed max-w-2xl">
-                We believe you should never have to take a fact-check at face value.
-                Here&apos;s exactly how ProofMode evaluates claims, what each verdict
-                means, and what we can and can&apos;t do.
+                Most fact-checking tools are black boxes. We think that defeats the purpose.
+                Here&apos;s exactly how ProofMode works, what each verdict means, and where
+                our limitations are. Full transparency — because a fact-checker you can&apos;t
+                verify is just another source of trust you have to take on faith.
               </p>
             </header>
 
@@ -122,26 +123,33 @@ export default function TrustPage() {
                 <div className="rounded-lg border border-green-500/20 bg-green-500/5 p-5">
                   <p className="font-medium text-green-400 mb-1.5">Supported</p>
                   <p className="text-sm text-slate-400 leading-relaxed">
-                    The claim is backed by consistent reasoning and, where available, by
-                    retrieved evidence from credible sources. This is a strong signal,
-                    though not a guarantee of absolute truth.
+                    Retrieved evidence directly and explicitly confirms this claim. The
+                    classifier cites which sources support it in its reasoning. Confidence
+                    reflects evidence strength — a single source caps at 70%.
                   </p>
                 </div>
-                <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-5">
-                  <p className="font-medium text-yellow-400 mb-1.5">Mixed / Not Enough Info</p>
+                <div className="rounded-lg border border-orange-500/20 bg-orange-500/5 p-5">
+                  <p className="font-medium text-orange-400 mb-1.5">Conflicting Sources</p>
                   <p className="text-sm text-slate-400 leading-relaxed">
-                    The claim has partial support but also comes with caveats — conflicting
-                    sources, ambiguous wording, or missing context. This is also the
-                    default when the classifier is uncertain.
+                    Multiple sources were found, but they genuinely disagree. Some evidence
+                    supports the claim while other evidence contradicts it. The reasoning
+                    explains which sources say what.
                   </p>
                 </div>
                 <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-5">
-                  <p className="font-medium text-red-400 mb-1.5">Unsupported</p>
+                  <p className="font-medium text-red-400 mb-1.5">Refuted</p>
                   <p className="text-sm text-slate-400 leading-relaxed">
-                    We couldn&apos;t find adequate support for this claim, or found
-                    evidence that contradicts it. This doesn&apos;t mean the claim is
-                    intentionally false — it means it couldn&apos;t be verified with
-                    available sources.
+                    Retrieved evidence directly and explicitly contradicts this claim. The
+                    reasoning cites which sources disprove it. This doesn&apos;t mean the
+                    claim is intentionally false — only that available evidence contradicts it.
+                  </p>
+                </div>
+                <div className="rounded-lg border border-slate-500/20 bg-slate-500/5 p-5">
+                  <p className="font-medium text-slate-300 mb-1.5">Insufficient Evidence</p>
+                  <p className="text-sm text-slate-400 leading-relaxed">
+                    We couldn&apos;t find enough relevant evidence to verify or refute this
+                    claim. Rather than guess, we flag it honestly. This is the default — a
+                    claim is &quot;insufficient&quot; until evidence proves otherwise.
                   </p>
                 </div>
               </div>
@@ -153,15 +161,15 @@ export default function TrustPage() {
                 About confidence scores
               </h2>
               <p className="text-sm text-slate-400 leading-relaxed">
-                Each claim includes a confidence score (0-100%). This reflects the AI
-                model&apos;s internal certainty about its classification — not an
-                empirical probability. A 90% confidence on &quot;Supported&quot; means
-                the model is quite sure, but it&apos;s still the model&apos;s judgment.
+                Confidence reflects how strongly the retrieved evidence supports the
+                verdict — not an abstract AI &quot;feeling.&quot; The scale is calibrated to
+                evidence quality: 0% means no evidence, 10-30% means weak or indirect,
+                40-60% means moderate single-source, 70-80% means strong multi-source,
+                and 90-100% means overwhelming agreement from multiple independent sources.
               </p>
               <p className="text-sm text-slate-400 leading-relaxed">
-                Confidence scores are most useful for comparing claims within the same
-                report. A claim rated &quot;Supported&quot; with 95% confidence is a
-                stronger finding than one rated &quot;Supported&quot; at 60%.
+                Importantly, confidence is capped at 70% when only a single source is
+                available. We never report high confidence from thin evidence.
               </p>
             </section>
 
@@ -171,13 +179,13 @@ export default function TrustPage() {
                 Our approach to transparency
               </h2>
               <p className="text-sm text-slate-400 leading-relaxed">
-                Every verdict comes with the evidence and reasoning that produced it.
-                You can see exactly which sources were consulted, what snippets were
-                extracted, and the confidence behind each classification.
+                Every verdict includes the reasoning behind it, citing specific sources
+                by number. You can click through to every source, read the snippets, and
+                decide for yourself whether you agree with our assessment.
               </p>
               <p className="text-sm text-slate-400 leading-relaxed">
                 ProofMode is a tool to help you think critically — not a replacement for
-                it. We show our work so you can form your own judgment.
+                it. We show our work so you can verify the verifier.
               </p>
             </section>
 
@@ -192,12 +200,12 @@ export default function TrustPage() {
                   should be aware of:
                 </p>
                 <ul className="list-disc pl-5 space-y-1.5 leading-relaxed">
-                  <li>Claims are verified against web sources — niche or very recent claims may lack evidence</li>
-                  <li>The AI classifier can be wrong, especially on nuanced or domain-specific claims</li>
-                  <li>Confidence scores are model-internal estimates, not calibrated probabilities</li>
+                  <li>Claims are verified against web sources — niche, paywalled, or very recent claims may lack evidence and will be flagged as &quot;Insufficient&quot;</li>
+                  <li>The AI classifier bases verdicts only on retrieved evidence, but can still misinterpret snippets, especially for nuanced or domain-specific claims</li>
+                  <li>Search snippets shown in reports are summaries from the search engine, not direct quotes from the source page</li>
                   <li>Satire, sarcasm, and figurative language may be misinterpreted as factual claims</li>
-                  <li>Evidence quality depends on what&apos;s available on the open web at verification time</li>
-                  <li>Results should not be used as a substitute for professional fact-checking in legal, medical, or financial contexts</li>
+                  <li>Evidence quality depends on what is available on the open web at the time of verification</li>
+                  <li>ProofMode is a verification aid, not a replacement for professional fact-checking in legal, medical, or financial contexts</li>
                 </ul>
               </div>
             </section>
@@ -215,12 +223,12 @@ export default function TrustPage() {
 
             {/* CTA */}
             <div className="border-t border-surface-800/60 pt-10 text-center">
-              <p className="text-slate-400 mb-5">Ready to try it?</p>
+              <p className="text-slate-400 mb-5">See it for yourself — paste any text and get a full verification report.</p>
               <Link
                 href="/verify"
                 className="inline-block rounded-lg bg-brand-600 px-6 py-2.5 font-semibold text-white transition hover:bg-brand-500"
               >
-                Check your first claim
+                Try It Free
               </Link>
             </div>
           </div>

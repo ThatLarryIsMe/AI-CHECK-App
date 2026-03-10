@@ -5,22 +5,22 @@ import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
 
 export const metadata: Metadata = {
-  title: "ProofMode — AI Fact Checking in Seconds",
+  title: "ProofMode — Verify Every Claim Before You Publish",
   description:
-    "Paste any text and get a claim-by-claim verification report backed by real sources. Built for journalists, researchers, and anyone who cares about accuracy.",
+    "The fact-checking tool for professionals who publish. Paste any text, URL, or PDF and get a source-backed verification report in seconds. Every claim checked individually against real evidence.",
   icons: { icon: "/favicon.svg" },
   openGraph: {
-    title: "ProofMode — AI Fact Checking in Seconds",
+    title: "ProofMode — Verify Every Claim Before You Publish",
     description:
-      "Paste any text and get a claim-by-claim verification report backed by real sources.",
+      "Source-backed fact-checking for professionals. Every claim verified individually against real evidence.",
     siteName: "ProofMode",
     type: "website",
   },
   twitter: {
     card: "summary",
-    title: "ProofMode — AI Fact Checking in Seconds",
+    title: "ProofMode — Verify Every Claim Before You Publish",
     description:
-      "Paste any text and get a claim-by-claim verification report backed by real sources.",
+      "Source-backed fact-checking for professionals. Every claim verified individually against real evidence.",
   },
 };
 
