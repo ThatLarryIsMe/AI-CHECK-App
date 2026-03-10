@@ -12,7 +12,7 @@ export function Footer() {
                 <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" />
                 <path d="M5 8l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              ProofMode
+              Factward
             </div>
             <p className="text-xs text-slate-500 max-w-xs">
               Source-backed fact-checking for journalists, researchers, and content professionals. Every claim verified against real evidence.
@@ -48,9 +48,9 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-8 border-t border-surface-800/60 pt-6 text-xs text-slate-600">
-          &copy; {new Date().getFullYear()} ProofMode. All rights reserved.
-        </div>
+        <p className="mt-10 text-xs text-slate-600">
+          &copy; {new Date().getFullYear()} Factward. All rights reserved.
+        </p>
       </div>
     </footer>
   );
