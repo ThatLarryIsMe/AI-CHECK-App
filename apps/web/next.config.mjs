@@ -2,7 +2,9 @@
 const nextConfig = {
   output: "standalone",
   transpilePackages: ["@proofmode/core"],
-  serverExternalPackages: ["pdf-parse", "pdfjs-dist"],
+  experimental: {
+    serverComponentsExternalPackages: ["pdf-parse", "pdfjs-dist"],
+  },
 };
 
 export default nextConfig;
