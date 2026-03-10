@@ -59,7 +59,7 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
     );
   }
 
-  text = text.replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+  const text = result.text.replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
 
   if (text.length < 50) {
     throw Object.assign(
