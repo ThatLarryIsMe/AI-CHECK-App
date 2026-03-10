@@ -24,7 +24,7 @@ if (typeof globalThis.DOMMatrix === "undefined") {
 
 /**
  * Extract text from a PDF buffer.
- * Uses pdf-parse (Mozilla pdfjs-dist wrapper).
+ * Uses pdf-parse v2 (PDFParse class with getText()).
  */
 export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
   if (buffer.length > MAX_PDF_BYTES) {
@@ -34,13 +34,21 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
     );
   }
 
-  // Dynamic import so pdf-parse is only loaded when needed
+  // pdf-parse v2 exports { PDFParse } class, not a function
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const pdfParse = require("pdf-parse") as (buf: Buffer) => Promise<{ text: string; numpages: number }>;
+  const { PDFParse } = require("pdf-parse") as {
+    PDFParse: new (opts: { data: Uint8Array }) => {
+      getText(): Promise<{ text: string; total: number }>;
+      destroy(): Promise<void>;
+    };
+  };
 
-  let result: { text: string };
+  let text: string;
   try {
-    result = await pdfParse(buffer);
+    const parser = new PDFParse({ data: new Uint8Array(buffer) });
+    const result = await parser.getText();
+    text = result.text;
+    await parser.destroy();
   } catch (err: unknown) {
     throw Object.assign(
       new Error(`Failed to parse PDF: ${err instanceof Error ? err.message : "unknown"}`),
@@ -48,7 +56,7 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
     );
   }
 
-  const text = result.text.replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+  text = text.replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
 
   if (text.length < 50) {
     throw Object.assign(
