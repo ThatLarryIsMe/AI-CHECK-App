@@ -23,8 +23,12 @@ if (typeof globalThis.DOMMatrix === "undefined") {
 }
 
 /**
- * Extract text from a PDF buffer.
- * Uses pdfjs-dist directly (bypasses pdf-parse to avoid worker bundling issues on Vercel).
+ * Extract text from a PDF buffer using pdf-parse.
+ *
+ * IMPORTANT: We import from "pdf-parse/lib/pdf-parse.js" directly rather than
+ * the package root. The package root auto-runs a test that imports pdfjs-dist
+ * canvas bindings, which crash in Node/Vercel with "DOMMatrix is not defined".
+ * The lib path skips that test bootstrapping entirely.
  */
 export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
   if (buffer.length > MAX_PDF_BYTES) {
@@ -34,30 +38,20 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
     );
   }
 
-  let text: string;
+  // Use the internal lib path to avoid the test-file side-effect that triggers
+  // pdfjs-dist canvas/DOMMatrix usage.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const pdfParse = require("pdf-parse/lib/pdf-parse.js") as (
+    buf: Buffer,
+    options?: Record<string, unknown>
+  ) => Promise<{ text: string; numpages: number }>;
+
+  let result: { text: string };
   try {
-    // Import worker inline first so pdfjs doesn't need to resolve it from disk
-    await import("pdfjs-dist/legacy/build/pdf.worker.mjs");
-    const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
-
-    const doc = await pdfjsLib.getDocument({
-      data: new Uint8Array(buffer),
-      useWorkerFetch: false,
-      isEvalSupported: false,
-      useSystemFonts: true,
-    }).promise;
-
-    const pages: string[] = [];
-    for (let i = 1; i <= doc.numPages; i++) {
-      const page = await doc.getPage(i);
-      const content = await page.getTextContent();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const pageText = content.items.map((item: any) => item.str).join(" ");
-      pages.push(pageText);
-    }
-
-    text = pages.join("\n");
-    await doc.destroy();
+    result = await pdfParse(buffer, {
+      // Disable rendering pipeline — we only need text, not layout
+      max: 0,
+    });
   } catch (err: unknown) {
     throw Object.assign(
       new Error(`Failed to parse PDF: ${err instanceof Error ? err.message : "unknown"}`),
