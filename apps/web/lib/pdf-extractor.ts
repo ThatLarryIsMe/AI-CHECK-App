@@ -24,7 +24,7 @@ if (typeof globalThis.DOMMatrix === "undefined") {
 
 /**
  * Extract text from a PDF buffer.
- * Uses pdf-parse v2 (PDFParse class with getText()).
+ * Uses pdfjs-dist directly (bypasses pdf-parse to avoid worker bundling issues on Vercel).
  */
 export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
   if (buffer.length > MAX_PDF_BYTES) {
@@ -34,21 +34,30 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
     );
   }
 
-  // pdf-parse v2 exports { PDFParse } class, not a function
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { PDFParse } = require("pdf-parse") as {
-    PDFParse: new (opts: { data: Uint8Array }) => {
-      getText(): Promise<{ text: string; total: number }>;
-      destroy(): Promise<void>;
-    };
-  };
-
   let text: string;
   try {
-    const parser = new PDFParse({ data: new Uint8Array(buffer) });
-    const result = await parser.getText();
-    text = result.text;
-    await parser.destroy();
+    // Import worker inline first so pdfjs doesn't need to resolve it from disk
+    await import("pdfjs-dist/legacy/build/pdf.worker.mjs");
+    const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
+
+    const doc = await pdfjsLib.getDocument({
+      data: new Uint8Array(buffer),
+      useWorkerFetch: false,
+      isEvalSupported: false,
+      useSystemFonts: true,
+    }).promise;
+
+    const pages: string[] = [];
+    for (let i = 1; i <= doc.numPages; i++) {
+      const page = await doc.getPage(i);
+      const content = await page.getTextContent();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const pageText = content.items.map((item: any) => item.str).join(" ");
+      pages.push(pageText);
+    }
+
+    text = pages.join("\n");
+    await doc.destroy();
   } catch (err: unknown) {
     throw Object.assign(
       new Error(`Failed to parse PDF: ${err instanceof Error ? err.message : "unknown"}`),
