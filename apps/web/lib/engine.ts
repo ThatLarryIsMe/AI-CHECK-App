@@ -21,6 +21,30 @@ export type VerificationTelemetry = {
   errorType: string | null;
 };
 
+/**
+ * Validates that an extracted claim is grounded in the original text.
+ * Uses simple word-overlap heuristic to catch fabricated claims.
+ */
+function isClaimGroundedInText(claim: string, originalText: string): boolean {
+  const normalize = (s: string) =>
+    s
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, "")
+      .split(/\s+/)
+      .filter((w) => w.length > 3);
+
+  const claimWords = normalize(claim);
+  const textWords = new Set(normalize(originalText));
+
+  if (claimWords.length === 0) return false;
+
+  const matchCount = claimWords.filter((w) => textWords.has(w)).length;
+  const overlapRatio = matchCount / claimWords.length;
+
+  // At least 40% of meaningful claim words should appear in the source text
+  return overlapRatio >= 0.4;
+}
+
 export async function runVerification(
   text: string,
   jobId: string,
@@ -48,58 +72,66 @@ export async function runVerification(
 
     const packId = crypto.randomUUID();
 
+    // Step 1: Extract claims from text
     const extractStart = Date.now();
-    const claimTexts = (await extractClaims(text, MAX_CLAIMS)).slice(0, MAX_CLAIMS);
+    const rawClaimTexts = (await extractClaims(text, MAX_CLAIMS)).slice(0, MAX_CLAIMS);
     llmDurationMs += Date.now() - extractStart;
 
+    // Step 1b: Filter out claims not grounded in the original text (anti-hallucination)
+    const claimTexts = rawClaimTexts.filter((claim) => isClaimGroundedInText(claim, text));
+
+    if (claimTexts.length === 0 && rawClaimTexts.length > 0) {
+      // All claims were filtered — something went wrong with extraction
+      // Fall back to the raw claims rather than returning empty
+      claimTexts.push(...rawClaimTexts.slice(0, MAX_CLAIMS));
+    }
+
+    // Step 2: For each claim, retrieve evidence FIRST, then classify WITH evidence
     const claimsWithEvidence = await Promise.all(
       claimTexts.map(async (claimText) => {
         const claimId = crypto.randomUUID();
 
-        const classificationPromise = (async () => {
-          const classificationStart = Date.now();
-          try {
-            return await classifyClaim(claimText);
-          } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : "classification failed";
-            console.error(
-              JSON.stringify({
-                level: "warn",
-                jobId,
-                event: "claim_classification_failed",
-                error: msg,
-              })
-            );
-            return { status: "mixed" as const, confidence: 0 };
-          } finally {
-            llmDurationMs += Date.now() - classificationStart;
-          }
-        })();
+        // Step 2a: Retrieve evidence first
+        let claimEvidence: Awaited<ReturnType<typeof retrieveEvidence>> = [];
+        const retrievalStart = Date.now();
+        try {
+          claimEvidence = await retrieveEvidence(claimText);
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : "retrieval failed";
+          console.error(
+            JSON.stringify({
+              level: "warn",
+              jobId,
+              event: "claim_retrieval_failed",
+              error: msg,
+            })
+          );
+        }
+        retrievalDurationMs += Date.now() - retrievalStart;
 
-        const evidencePromise = (async () => {
-          const retrievalStart = Date.now();
-          try {
-            return await retrieveEvidence(claimText);
-          } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : "retrieval failed";
-            console.error(
-              JSON.stringify({
-                level: "warn",
-                jobId,
-                event: "claim_retrieval_failed",
-                error: msg,
-              })
-            );
-            return [];
-          } finally {
-            retrievalDurationMs += Date.now() - retrievalStart;
-          }
-        })();
-
-        const [result, claimEvidence] = await Promise.all([
-          classificationPromise,
-          evidencePromise,
-        ]);
+        // Step 2b: Classify WITH the retrieved evidence
+        const classificationStart = Date.now();
+        let result: Awaited<ReturnType<typeof classifyClaim>>;
+        try {
+          result = await classifyClaim(claimText, claimEvidence);
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : "classification failed";
+          console.error(
+            JSON.stringify({
+              level: "warn",
+              jobId,
+              event: "claim_classification_failed",
+              error: msg,
+            })
+          );
+          result = {
+            status: "insufficient" as const,
+            confidence: 0,
+            llmClassification: "insufficient" as const,
+            reasoning: "Classification failed. Defaulted to insufficient evidence.",
+          };
+        }
+        llmDurationMs += Date.now() - classificationStart;
 
         return {
           id: claimId,
@@ -107,6 +139,7 @@ export async function runVerification(
           text: claimText,
           status: result.status,
           confidence: result.confidence,
+          reasoning: result.reasoning,
           evidence: claimEvidence,
         };
       })

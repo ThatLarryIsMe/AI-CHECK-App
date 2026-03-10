@@ -45,7 +45,7 @@ export default function LoginPage() {
             </svg>
           </div>
           <h1 className="text-2xl font-semibold text-white">Welcome back</h1>
-          <p className="mt-2 text-sm text-slate-400">Sign in to continue fact-checking</p>
+          <p className="mt-2 text-sm text-slate-400">Sign in to verify your next piece</p>
         </div>
 
         <div className="rounded-xl border border-surface-800/60 bg-surface-900 p-8">

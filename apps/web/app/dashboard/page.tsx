@@ -31,11 +31,14 @@ async function getUserVerifications(userId: string): Promise<VerificationRow[]> 
          WHERE c->>'status' = 'unsupported'
        ), 0) AS unsupported_count,
        CASE
-         WHEN COALESCE(jsonb_array_length(p.pack_json->'claims'), 0) = 0 THEN 0
-         ELSE ROUND((
-           COALESCE((SELECT COUNT(*) FROM jsonb_array_elements(p.pack_json->'claims') c WHERE c->>'status' = 'supported'), 0) * 100
-           + COALESCE((SELECT COUNT(*) FROM jsonb_array_elements(p.pack_json->'claims') c WHERE c->>'status' = 'mixed'), 0) * 50
-         ) * 100.0 / (COALESCE(jsonb_array_length(p.pack_json->'claims'), 1) * 100))
+         WHEN COALESCE((
+           SELECT COUNT(*) FROM jsonb_array_elements(p.pack_json->'claims') c
+           WHERE c->>'status' IN ('supported', 'mixed', 'unsupported')
+         ), 0) = 0 THEN 0
+         ELSE ROUND(
+           COALESCE((SELECT COUNT(*) FROM jsonb_array_elements(p.pack_json->'claims') c WHERE c->>'status' = 'supported'), 0) * 100.0
+           / COALESCE((SELECT COUNT(*) FROM jsonb_array_elements(p.pack_json->'claims') c WHERE c->>'status' IN ('supported', 'mixed', 'unsupported')), 1)
+         )
        END AS trust_score
      FROM jobs j
      JOIN packs p ON p.job_id = j.id
@@ -90,13 +93,14 @@ export default async function DashboardPage() {
           <div className="rounded-xl border border-slate-800 bg-slate-900 p-12 text-center">
             <p className="text-lg font-medium text-slate-300">No verifications yet</p>
             <p className="mt-2 text-sm text-slate-500">
-              Paste text, enter a URL, or upload a PDF to get your first fact-check report.
+              Paste an article, drop a URL, or upload a PDF — your first verification report
+              takes less than a minute.
             </p>
             <Link
               href="/verify"
               className="mt-6 inline-block rounded-lg bg-cyan-500 px-6 py-2.5 font-semibold text-slate-950 transition hover:bg-cyan-400"
             >
-              Check Your First Claim
+              Verify Your First Piece
             </Link>
           </div>
         ) : (

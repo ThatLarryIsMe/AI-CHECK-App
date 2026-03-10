@@ -15,20 +15,21 @@ export default async function ToolsPage() {
           Tools
         </p>
         <h1 className="mb-2 text-display-sm font-semibold text-white">
-          Fact-check from anywhere
+          Verify without breaking your workflow
         </h1>
         <p className="mb-10 text-lg text-slate-400">
-          Use these tools to verify content without leaving the page you&apos;re reading.
+          One-click fact-checking from any page you&apos;re reading, plus API access
+          to build verification into your publishing pipeline.
         </p>
 
         {/* Bookmarklet */}
         <section className="mb-8 rounded-xl border border-surface-800/60 bg-surface-900 p-6">
           <h2 className="mb-3 text-xl font-semibold text-white">
-            Bookmarklet — One-Click Fact Check
+            Bookmarklet — Fact-Check Any Page in One Click
           </h2>
           <p className="mb-4 text-sm text-slate-400">
-            Drag the button below to your bookmarks bar. Click it on any article
-            to instantly fact-check the page with ProofMode.
+            Reading an article that seems off? Click the bookmarklet and get a full
+            verification report without copy-pasting anything.
           </p>
 
           <div className="mb-6 flex items-center gap-4">
@@ -65,8 +66,8 @@ export default async function ToolsPage() {
                 )}
               </h2>
               <p className="mb-4 text-sm text-slate-400">
-                Integrate ProofMode into your workflow with our REST API.
-                Submit text programmatically and get structured verification results.
+                Build fact-checking into your CMS, publishing pipeline, or content
+                review process. Submit text programmatically, get structured evidence packs back.
               </p>
             </div>
           </div>
@@ -106,11 +107,11 @@ export default async function ToolsPage() {
         {/* Browser Extension teaser */}
         <section className="rounded-xl border border-dashed border-slate-700 bg-surface-900/50 p-6 text-center">
           <h2 className="mb-2 text-lg font-semibold text-white">
-            Browser Extension — Coming Soon
+            Chrome Extension — Coming Soon
           </h2>
           <p className="text-sm text-slate-400">
-            We&apos;re building a Chrome extension that fact-checks articles as you
-            read them. Stay tuned.
+            Inline fact-checking as you read. Highlights claims directly on the page
+            with verdicts and sources. Sign up to get early access.
           </p>
         </section>
       </div>

@@ -34,7 +34,7 @@ function saveToHistory(packId: string, snippet: string) {
 
 const STEPS = ["Extracting text", "Analyzing claims", "Verifying facts", "Building report"];
 
-export function VerifyClient({ plan = "free", planStatus = "inactive" }: { plan?: string; planStatus?: string }) {
+export function VerifyClient({ plan = "free", planStatus = "inactive", role = "user" }: { plan?: string; planStatus?: string; role?: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<InputTab>("text");
@@ -70,8 +70,9 @@ export function VerifyClient({ plan = "free", planStatus = "inactive" }: { plan?
   }, [loading]);
 
   const isPro = plan === "pro" && planStatus === "active";
-  const dailyLimit = isPro ? 200 : 10;
-  const charLimit = isPro ? 15000 : 5000;
+  const isAdmin = role === "admin";
+  const dailyLimit = isAdmin ? Infinity : isPro ? 200 : 2;
+  const charLimit = isPro || isAdmin ? 15000 : 5000;
 
   async function extractFromUrl(): Promise<string> {
     const res = await fetch("/api/extract-url", {
@@ -202,16 +203,16 @@ export function VerifyClient({ plan = "free", planStatus = "inactive" }: { plan?
     <main className="flex flex-col items-center px-4 py-12 md:py-16">
       <div className="flex w-full max-w-5xl flex-col lg:flex-row gap-8">
         <section className="flex-1 min-w-0">
-          <h1 className="mb-1 text-display-sm font-semibold text-white">Check any claim</h1>
+          <h1 className="mb-1 text-display-sm font-semibold text-white">Verify before you publish</h1>
           <p className="mb-6 text-slate-400">
-            Paste text, enter a URL, or upload a PDF — we&apos;ll break it down and verify
-            each claim.
+            Paste your text, drop a URL, or upload a PDF. We&apos;ll extract every factual
+            claim and check it against real sources.
           </p>
 
           {/* Plan usage */}
           <div className="mb-5 flex items-center gap-3 text-xs text-slate-500">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-800/60 px-3 py-1">
-              {isPro ? "Pro" : "Free"}: {dailyLimit} checks / day
+              {isAdmin ? "Admin" : isPro ? "Pro" : "Free"}: {isAdmin ? "unlimited" : dailyLimit} checks / day
             </span>
             {!isPro && (
               <Link href="/pricing" className="text-brand-400 hover:text-brand-300">
@@ -246,7 +247,7 @@ export function VerifyClient({ plan = "free", planStatus = "inactive" }: { plan?
                     className="min-h-[160px] w-full resize-y rounded-lg border border-surface-800/60 bg-surface-950 p-4 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500/50 placeholder:text-slate-600"
                     value={text}
                     onChange={(e) => setText(e.target.value)}
-                    placeholder="Paste the text you want to fact-check..."
+                    placeholder="Paste the article, draft, or content you want to verify..."
                     maxLength={charLimit}
                   />
                   <span className="absolute bottom-3 right-3 text-xs text-slate-600">
@@ -258,7 +259,7 @@ export function VerifyClient({ plan = "free", planStatus = "inactive" }: { plan?
               {activeTab === "url" && (
                 <div className="space-y-2">
                   <p className="text-sm text-slate-400">
-                    Enter the URL of an article or webpage to fact-check.
+                    Paste the URL of any article or webpage. We&apos;ll extract the text and verify every claim.
                   </p>
                   <input
                     type="url"
@@ -273,7 +274,7 @@ export function VerifyClient({ plan = "free", planStatus = "inactive" }: { plan?
               {activeTab === "pdf" && (
                 <div className="space-y-3">
                   <p className="text-sm text-slate-400">
-                    Upload a PDF document to extract and verify its claims.
+                    Upload a research paper, report, or document. We&apos;ll extract the text and verify every claim.
                   </p>
                   {pdfFile ? (
                     <div className="flex flex-col items-center rounded-lg border-2 border-dashed border-brand-500/30 bg-brand-500/5 p-6 text-center">

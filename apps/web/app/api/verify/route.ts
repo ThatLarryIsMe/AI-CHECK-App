@@ -55,15 +55,25 @@ async function atomicUserRateLimit(
     const since = new Date();
     since.setUTCHours(since.getUTCHours() - 24);
 
-    // Fetch plan info for this user
-    const planResult = await pool.query<{ plan: string; plan_status: string }>(
-          `SELECT plan, plan_status FROM users WHERE id = $1`,
+    // Fetch plan and role info for this user
+    const planResult = await pool.query<{ plan: string; plan_status: string; role: string }>(
+          `SELECT plan, plan_status, role FROM users WHERE id = $1`,
           [userId]
         );
     const plan = planResult.rows[0]?.plan ?? "free";
     const planStatus = planResult.rows[0]?.plan_status ?? "inactive";
+    const role = planResult.rows[0]?.role ?? "user";
     const isPro = planStatus === "active" && plan === "pro";
-    const limit = isPro ? 200 : 10;
+    const isAdmin = role === "admin";
+
+    // Admins get unlimited checks; Pro gets 200; Free gets 2
+    if (isAdmin) {
+      // Still record rate limit row for metrics, but never block
+      await pool.query(`INSERT INTO user_rate_limits (user_id) VALUES ($1)`, [userId]);
+      return { limited: false, isPro: true };
+    }
+
+    const limit = isPro ? 200 : 2;
 
     // Atomic: INSERT only if count is below the limit
     const result = await pool.query<{ id: number }>(

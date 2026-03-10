@@ -15,7 +15,7 @@ export function Footer() {
               ProofMode
             </div>
             <p className="text-xs text-slate-500 max-w-xs">
-              AI-powered claim verification. Paste text, drop a URL, or upload a PDF to get evidence-backed fact checks.
+              Source-backed fact-checking for journalists, researchers, and content professionals. Every claim verified against real evidence.
             </p>
           </div>
 

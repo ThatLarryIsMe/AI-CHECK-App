@@ -14,6 +14,7 @@ function computeStats(pack: { claims: Array<{ status: string; confidence: number
   const supported = claims.filter((c) => c.status === "supported").length;
   const mixed = claims.filter((c) => c.status === "mixed").length;
   const unsupported = claims.filter((c) => c.status === "unsupported").length;
+  const insufficient = claims.filter((c) => c.status === "insufficient").length;
   const avgConfidence =
     total > 0
       ? Math.round(
@@ -21,14 +22,17 @@ function computeStats(pack: { claims: Array<{ status: string; confidence: number
         )
       : 0;
 
-  // Trust Score: weighted formula
-  // Supported claims boost the score, unsupported claims lower it
+  // Trust Score: conservative formula based only on verifiable claims.
+  // Only claims with actual evidence count toward the score.
+  // "insufficient" claims are excluded from both numerator AND denominator
+  // so they don't inflate or deflate the score — they're simply unverifiable.
+  const verifiable = supported + mixed + unsupported;
   const trustScore =
-    total > 0
-      ? Math.round(((supported * 100 + mixed * 50 + unsupported * 0) / (total * 100)) * 100)
+    verifiable > 0
+      ? Math.round((supported / verifiable) * 100)
       : 0;
 
-  return { total, supported, mixed, unsupported, avgConfidence, trustScore };
+  return { total, supported, mixed, unsupported, insufficient, avgConfidence, trustScore };
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
