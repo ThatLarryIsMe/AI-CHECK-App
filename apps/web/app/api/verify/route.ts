@@ -51,15 +51,26 @@ async function atomicUserRateLimit(
     const since = new Date();
     since.setUTCHours(since.getUTCHours() - 24);
 
-    // Fetch plan, role, and invite bonus info for this user
-    const planResult = await pool.query<{ plan: string; plan_status: string; role: string; invite_checks_remaining: number }>(
-          `SELECT plan, plan_status, role, invite_checks_remaining FROM users WHERE id = $1`,
+    // Fetch plan and role info for this user
+    const planResult = await pool.query<{ plan: string; plan_status: string; role: string }>(
+          `SELECT plan, plan_status, role FROM users WHERE id = $1`,
           [userId]
         );
     const plan = planResult.rows[0]?.plan ?? "free";
     const planStatus = planResult.rows[0]?.plan_status ?? "inactive";
     const role = planResult.rows[0]?.role ?? "user";
-    const inviteChecks = planResult.rows[0]?.invite_checks_remaining ?? 0;
+
+    // Fetch invite bonus checks separately (column may not exist yet)
+    let inviteChecks = 0;
+    try {
+      const inviteResult = await pool.query<{ invite_checks_remaining: number }>(
+        `SELECT invite_checks_remaining FROM users WHERE id = $1`,
+        [userId]
+      );
+      inviteChecks = inviteResult.rows[0]?.invite_checks_remaining ?? 0;
+    } catch {
+      // Column doesn't exist yet — skip bonus checks
+    }
     const isPro = planStatus === "active" && plan === "pro";
     const isAdmin = role === "admin";
 

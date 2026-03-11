@@ -140,9 +140,8 @@ export async function getSessionFromCookie(): Promise<ServerSessionUser | null> 
       plan_status: string;
       current_period_end: Date | null;
       role: string;
-      invite_checks_remaining: number;
     }>(
-      `SELECT s.user_id, u.email, u.plan, u.plan_status, u.current_period_end, u.role, u.invite_checks_remaining
+      `SELECT s.user_id, u.email, u.plan, u.plan_status, u.current_period_end, u.role
        FROM sessions s
        JOIN users u ON u.id = s.user_id
        WHERE s.token = $1 AND s.expires_at > NOW()`,
@@ -150,6 +149,19 @@ export async function getSessionFromCookie(): Promise<ServerSessionUser | null> 
     );
     const row = result.rows[0];
     if (!row) return null;
+
+    // Fetch invite bonus checks separately so login doesn't break if column doesn't exist yet
+    let inviteChecksRemaining = 0;
+    try {
+      const inviteResult = await pool.query<{ invite_checks_remaining: number }>(
+        `SELECT invite_checks_remaining FROM users WHERE id = $1`,
+        [row.user_id]
+      );
+      inviteChecksRemaining = inviteResult.rows[0]?.invite_checks_remaining ?? 0;
+    } catch {
+      // Column may not exist yet — that's fine, default to 0
+    }
+
     return {
       userId: row.user_id,
       email: row.email,
@@ -157,7 +169,7 @@ export async function getSessionFromCookie(): Promise<ServerSessionUser | null> 
       planStatus: row.plan_status,
       currentPeriodEnd: row.current_period_end,
       role: row.role ?? "user",
-      inviteChecksRemaining: row.invite_checks_remaining ?? 0,
+      inviteChecksRemaining,
     };
   } catch {
     return null;
