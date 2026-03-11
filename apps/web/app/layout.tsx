@@ -41,7 +41,6 @@ export default async function RootLayout({
           user={
             navUser
               ? {
-                  email: navUser.email,
                   role: navUser.role,
                 }
               : null
