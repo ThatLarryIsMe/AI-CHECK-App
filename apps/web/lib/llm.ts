@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
-const LLM_TIMEOUT_MS = 15_000;
+const LLM_TIMEOUT_MS = 30_000;
 
 function getApiKey(): string {
   const key = process.env.OPENAI_API_KEY;
@@ -41,7 +41,7 @@ export async function callLLM(
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "gpt-4o",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userMessage },
@@ -56,7 +56,7 @@ export async function callLLM(
       err instanceof Error &&
       (err.name === "AbortError" || err.message.includes("abort"))
     ) {
-      throw Object.assign(new Error("LLM request timed out after 15s"), {
+      throw Object.assign(new Error("LLM request timed out after 30s"), {
         type: "LLM_TIMEOUT",
       });
     }

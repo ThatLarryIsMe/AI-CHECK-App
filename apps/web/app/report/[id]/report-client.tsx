@@ -196,18 +196,30 @@ export function ReportClient({
       insufficient: "\u2753",
     };
 
+    // Derive a short topic summary from the claims
+    const topicWords = claims
+      .slice(0, 3)
+      .map((c) => c.text)
+      .join(". ");
+    const summary =
+      topicWords.length > 120
+        ? topicWords.slice(0, 117) + "..."
+        : topicWords;
+
     // Build a short summary of key claims (fit within tweet limits)
-    const claimLines = claims.slice(0, 4).map((c) => {
+    const claimLines = claims.slice(0, 3).map((c) => {
       const status = c.classification ?? c.status;
       const icon = verdictIcon[status] ?? "\u2022";
-      const short = c.text.length > 70 ? c.text.slice(0, 67) + "..." : c.text;
+      const short = c.text.length > 60 ? c.text.slice(0, 57) + "..." : c.text;
       return `${icon} ${short}`;
     });
 
-    const more = claims.length > 4 ? `\n...and ${claims.length - 4} more` : "";
+    const more = claims.length > 3 ? `\n+${claims.length - 3} more claims` : "";
 
     const text = [
-      `Fact-checked ${stats.total} claims \u2014 Trust Score: ${stats.trustScore}% (${trustLabel})`,
+      `\u{1F50D} "${summary}"`,
+      ``,
+      `Fact-checked ${stats.total} claims \u2014 ${stats.trustScore}% Trust (${trustLabel})`,
       ``,
       ...claimLines,
       more,

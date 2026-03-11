@@ -14,8 +14,8 @@ if (typeof globalThis.DOMMatrix === "undefined") {
 const MAX_PDF_BYTES = 10_000_000; // 10 MB
 
 /**
- * Extract text from a PDF buffer using pdf-parse.
- * The webpack config stubs `canvas` to false to prevent DOMMatrix errors.
+ * Extract text from a PDF buffer using pdfjs-dist directly.
+ * Avoids the broken pdf-parse v2 wrapper that causes "s is not a function" errors.
  */
 export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
   if (buffer.length > MAX_PDF_BYTES) {
@@ -25,15 +25,33 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
     );
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const pdfParse = require("pdf-parse") as (
-    buf: Buffer,
-    options?: Record<string, unknown>
-  ) => Promise<{ text: string; numpages: number }>;
-
-  let result: { text: string };
+  let text: string;
   try {
-    result = await pdfParse(buffer, { max: 0 });
+    // Use the legacy build for Node.js compatibility
+    const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
+
+    const uint8 = new Uint8Array(buffer);
+    const loadingTask = pdfjsLib.getDocument({
+      data: uint8,
+      useWorkerFetch: false,
+      isEvalSupported: false,
+      useSystemFonts: true,
+    });
+
+    const doc = await loadingTask.promise;
+    const pageTexts: string[] = [];
+
+    for (let i = 1; i <= doc.numPages; i++) {
+      const page = await doc.getPage(i);
+      const content = await page.getTextContent();
+      const pageText = content.items
+        .filter((item: Record<string, unknown>) => "str" in item)
+        .map((item: Record<string, unknown>) => item.str as string)
+        .join(" ");
+      pageTexts.push(pageText);
+    }
+
+    text = pageTexts.join("\n\n");
   } catch (err: unknown) {
     throw Object.assign(
       new Error(`Failed to parse PDF: ${err instanceof Error ? err.message : "unknown"}`),
@@ -41,7 +59,7 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
     );
   }
 
-  const text = result.text.replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+  text = text.replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
 
   if (text.length < 50) {
     throw Object.assign(

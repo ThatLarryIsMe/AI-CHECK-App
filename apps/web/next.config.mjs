@@ -4,8 +4,8 @@ const nextConfig = {
   transpilePackages: ["@factward/core"],
   webpack: (config, { isServer }) => {
     if (isServer) {
-      // pdf-parse bundles pdfjs-dist which tries to import 'canvas'.
-      // Stub it to false so the build doesn't crash with DOMMatrix / canvas errors.
+      // pdfjs-dist tries to import 'canvas' for node-canvas rendering.
+      // Stub it to false so the build doesn't crash in serverless environments.
       config.resolve.alias = {
         ...config.resolve.alias,
         canvas: false,
