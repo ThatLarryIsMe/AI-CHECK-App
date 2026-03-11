@@ -44,9 +44,11 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
     for (let i = 1; i <= doc.numPages; i++) {
       const page = await doc.getPage(i);
       const content = await page.getTextContent();
-      const pageText = content.items
-        .filter((item: Record<string, unknown>) => "str" in item)
-        .map((item: Record<string, unknown>) => item.str as string)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const items = content.items as any[];
+      const pageText = items
+        .filter((item) => typeof item?.str === "string")
+        .map((item) => item.str as string)
         .join(" ");
       pageTexts.push(pageText);
     }
