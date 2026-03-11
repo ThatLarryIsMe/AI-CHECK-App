@@ -13,8 +13,8 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
-  const response = NextResponse.redirect(`${appUrl}/login`, 303);
+  const loginUrl = new URL("/login", request.url);
+  const response = NextResponse.redirect(loginUrl, 303);
   clearSessionCookie(response);
   return response;
 }
