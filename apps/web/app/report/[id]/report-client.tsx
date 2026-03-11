@@ -189,19 +189,30 @@ export function ReportClient({
         : stats.trustScore >= 50 ? "Mixed"
           : "Low Trust";
 
-    const parts: string[] = [];
-    if (stats.supported > 0) parts.push(`${stats.supported} supported`);
-    if (stats.unsupported > 0) parts.push(`${stats.unsupported} unsupported`);
-    if (stats.mixed > 0) parts.push(`${stats.mixed} conflicting`);
-    if (stats.insufficient > 0) parts.push(`${stats.insufficient} unverifiable`);
+    const verdictIcon: Record<string, string> = {
+      supported: "\u2705",
+      unsupported: "\u274C",
+      mixed: "\u26A0\uFE0F",
+      insufficient: "\u2753",
+    };
+
+    // Build a short summary of key claims (fit within tweet limits)
+    const claimLines = claims.slice(0, 4).map((c) => {
+      const status = c.classification ?? c.status;
+      const icon = verdictIcon[status] ?? "\u2022";
+      const short = c.text.length > 70 ? c.text.slice(0, 67) + "..." : c.text;
+      return `${icon} ${short}`;
+    });
+
+    const more = claims.length > 4 ? `\n...and ${claims.length - 4} more` : "";
 
     const text = [
-      `Fact-checked ${stats.total} claims with @Factward`,
+      `Fact-checked ${stats.total} claims \u2014 Trust Score: ${stats.trustScore}% (${trustLabel})`,
       ``,
-      `Trust Score: ${stats.trustScore}% (${trustLabel})`,
-      parts.join(" | "),
+      ...claimLines,
+      more,
       ``,
-      `Verify anything at factward.com`,
+      `Full report \u2B07\uFE0F`,
     ].join("\n");
 
     const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(reportUrl)}`;
