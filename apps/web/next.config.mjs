@@ -13,8 +13,6 @@ const nextConfig = {
     }
     return config;
   },
-  experimental: {
-    serverComponentsExternalPackages: ["pdf-parse", "pdfjs-dist"],
-  },
+  serverExternalPackages: ["jsdom", "@mozilla/readability"],
 };
 export default nextConfig;
