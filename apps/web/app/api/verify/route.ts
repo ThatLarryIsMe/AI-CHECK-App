@@ -51,14 +51,15 @@ async function atomicUserRateLimit(
     const since = new Date();
     since.setUTCHours(since.getUTCHours() - 24);
 
-    // Fetch plan and role info for this user
-    const planResult = await pool.query<{ plan: string; plan_status: string; role: string }>(
-          `SELECT plan, plan_status, role FROM users WHERE id = $1`,
+    // Fetch plan, role, and invite bonus info for this user
+    const planResult = await pool.query<{ plan: string; plan_status: string; role: string; invite_checks_remaining: number }>(
+          `SELECT plan, plan_status, role, invite_checks_remaining FROM users WHERE id = $1`,
           [userId]
         );
     const plan = planResult.rows[0]?.plan ?? "free";
     const planStatus = planResult.rows[0]?.plan_status ?? "inactive";
     const role = planResult.rows[0]?.role ?? "user";
+    const inviteChecks = planResult.rows[0]?.invite_checks_remaining ?? 0;
     const isPro = planStatus === "active" && plan === "pro";
     const isAdmin = role === "admin";
 
@@ -67,6 +68,20 @@ async function atomicUserRateLimit(
       // Still record rate limit row for metrics, but never block
       await pool.query(`INSERT INTO user_rate_limits (user_id) VALUES ($1)`, [userId]);
       return { limited: false, isPro: true };
+    }
+
+    // Invite bonus checks: if user has remaining bonus checks, consume one (bypasses daily limit)
+    if (inviteChecks > 0) {
+      const decremented = await pool.query<{ invite_checks_remaining: number }>(
+        `UPDATE users SET invite_checks_remaining = invite_checks_remaining - 1
+         WHERE id = $1 AND invite_checks_remaining > 0
+         RETURNING invite_checks_remaining`,
+        [userId]
+      );
+      if (decremented.rows.length > 0) {
+        await pool.query(`INSERT INTO user_rate_limits (user_id) VALUES ($1)`, [userId]);
+        return { limited: false, isPro };
+      }
     }
 
     const limit = isPro ? 200 : 2;

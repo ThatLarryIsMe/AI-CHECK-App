@@ -1,5 +1,5 @@
 {
-  "name": "proofmode-ai-monorepo",
+  "name": "factward-monorepo",
   "private": true,
   "engines": {
     "node": "24.x"

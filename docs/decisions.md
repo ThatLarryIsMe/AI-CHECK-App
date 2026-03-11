@@ -56,7 +56,7 @@
 
 ## Phase G1 — Conversion Polish
 
-- localStorage-based verification history (key: `proofmode_history`, max 10 entries) displayed as sidebar on `/verify`
+- localStorage-based verification history (key: `factward_history`, max 10 entries) displayed as sidebar on `/verify`
 - History entries store `{ packId, snippet, ts }`; links resolve to `/packs/${packId}` after polling job for packId
 - Export v2: server-side route upgraded with Summary table (total/supported/mixed/unsupported/avgConfidence), Method & Limitations block, Disclaimer
 - Error UX upgraded to bordered error card with dismiss button; pack-load errors include Retry button
@@ -93,7 +93,7 @@
 - Instrumented verify route: captures `startTime`, computes `duration_ms`, sets `llm_timeout = true` on timeout errors, `retrieval_used = true` when `evidenceCount > 0`.
 - Metrics insert is wrapped in explicit `try/catch` — a failure logs `job_metrics_insert_failed` event and does NOT propagate; verification flow is unaffected.
 - Created `GET /api/admin/health` route returning `{totalJobsToday, avgDurationMs, timeoutRate, retrievalRate}` from `job_metrics`.
-- Admin health route requires `x-proofmode-key` header via `requireBetaKey()`. Returns 401 if key invalid or missing.
+- Admin health route requires `x-factward-key` header via `requireBetaKey()`. Returns 401 if key invalid or missing.
 - All aggregation metrics are 0-safe: returns zeroes if no job_metrics rows exist.
 - Decision: metrics stored in separate `job_metrics` table (not on jobs) to allow append-only observability without touching the core jobs schema.
 
@@ -103,14 +103,14 @@
 - All version references now import `{ VERSION }` from `@/../../version`. No other hardcoded version strings remain.
 - Updated `apps/web/app/page.tsx` footer: replaced `"v0.3.0-beta"` literal with `v{VERSION}`.
 - Updated `apps/web/app/api/admin/health/route.ts`: added `version: VERSION` as first field in JSON response.
-- Updated `apps/web/app/api/packs/[id]/export.md/route.ts`: prepended `**ProofMode Version:** ${VERSION}` and `**Generated At:** ${now}` header block to exported markdown.
+- Updated `apps/web/app/api/packs/[id]/export.md/route.ts`: prepended `**Factward Version:** ${VERSION}` and `**Generated At:** ${now}` header block to exported markdown.
 - Decision: `version.ts` placed at monorepo root (not inside `apps/web`) so both the web app and any future packages can import from it without circular deps.
 - Tagged release `v0.3.1` and published GitHub Release summarizing Phase M stabilization and N1 observability baseline.
 - 
 ## Phase N3 — Access Gate Hardening (v0.3.2)
 - Replaced string equality in `requireBetaKey()` with `timingSafeEqual` from Node `crypto` module — prevents timing-based key enumeration attacks.
 - Added explicit length-mismatch guard: runs a dummy `timingSafeEqual(aBuf, aBuf)` before returning `false` to prevent length leakage.
-- Gate is header-only: `x-proofmode-key` header is the sole accepted credential path. Query param key support is intentionally absent to prevent key leakage in server logs, proxy headers, and access logs.
+- Gate is header-only: `x-factward-key` header is the sole accepted credential path. Query param key support is intentionally absent to prevent key leakage in server logs, proxy headers, and access logs.
 - `requireBetaKey()` returns typed `{ ok: true } | { ok: false; reason: string }` — callers receive structured rejection reason.
 - Decision: constant-time comparison is mandatory for any secret comparison in production; standard `===` is vulnerable to timing side-channels.
 - Bumped `VERSION` to `0.3.2` to reflect hardened gate release.
@@ -160,9 +160,9 @@
 - `GET /api/jobs/[id]`: now requires session; returns 404 if job not found or user_id does not match current user (no 403, avoids leaking existence).
 - `GET /api/packs/[id]`: now requires session; uses `getPackForUser` - returns 404 if pack not found or belongs to a different user.
 - `POST /api/verify`: per-user daily cap at 50 verifications/24h/user via `user_rate_limits` table; returns 429 `{ error: "Daily user limit reached." }` when exceeded.
-- `verify-client.tsx`: `betaKey` prop removed; `x-proofmode-key` header no longer sent from UI. On 401, client redirects to `/login`.
+- `verify-client.tsx`: `betaKey` prop removed; `x-factward-key` header no longer sent from UI. On 401, client redirects to `/login`.
 - `/app/verify/page.tsx`: server-side session gate via `cookies()` + `sessions` table query. Unauthenticated users are redirected to `/login`. `betaKey` prop fully removed.
-- `docs/beta-ops.md`: rewritten for P2.2; end-user flow is now signup to login to `/verify`. `x-proofmode-key` is admin-only.
+- `docs/beta-ops.md`: rewritten for P2.2; end-user flow is now signup to login to `/verify`. `x-factward-key` is admin-only.
 - Decision: return 404 (not 403) on ownership mismatch to avoid leaking resource existence.
 - 
 ## Phase P3.1 - Stripe Subscriptions v1 (Pro plan + webhook + plan-aware caps)

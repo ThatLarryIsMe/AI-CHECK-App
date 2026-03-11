@@ -3,7 +3,7 @@ import { callLLM } from "./llm";
 import type { RetrievedEvidence } from "./retrieval";
 
 // Maps LLM raw classification keys to ClaimStatus values defined in
-// @proofmode/core ClaimSchema: z.enum(["supported", "mixed", "unsupported"])
+// @factward/core ClaimSchema: z.enum(["supported", "mixed", "unsupported"])
 // DO NOT add new values here without updating packages/core/src/schema.ts first.
 //
 // Semantics:

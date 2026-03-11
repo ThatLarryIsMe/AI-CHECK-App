@@ -53,7 +53,7 @@ export default function SignupPage() {
               <path d="M5 8l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
-          <h1 className="text-2xl font-semibold text-white">Join ProofMode</h1>
+          <h1 className="text-2xl font-semibold text-white">Join Factward</h1>
           <p className="mt-2 text-sm text-slate-400">
             Start verifying claims with real sources in under a minute
           </p>
@@ -146,7 +146,7 @@ export default function SignupPage() {
               />
               <p className="mt-1.5 text-xs text-slate-500">
                 Check your email for an invite code, or{" "}
-                <a href="mailto:hello@proofmode.ai" className="text-brand-400 hover:text-brand-300">
+                <a href="mailto:hello@factward.com" className="text-brand-400 hover:text-brand-300">
                   request one
                 </a>
                 .

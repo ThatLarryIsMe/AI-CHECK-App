@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to ProofMode will be documented in this file.
+All notable changes to Factward will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
@@ -19,7 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
-- Initial ProofMode engine: extract + classify claims via gpt-4o-mini
+- Initial Factward engine: extract + classify claims via gpt-4o-mini
 - Postgres persistence: jobs, packs, waitlist tables
 - Beta access gate via `BETA_ACCESS_KEY` header
 - Rate limiting (10 req/min/IP) on `/api/verify`

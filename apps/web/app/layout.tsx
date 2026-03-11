@@ -9,6 +9,9 @@ export const metadata: Metadata = {
   description:
     "The fact-checking tool for professionals who publish. Paste any text, URL, or PDF and get a source-backed verification report in seconds. Every claim checked individually against real evidence.",
   icons: { icon: "/favicon.svg" },
+  verification: {
+    google: "sJx5WPnh7jjrIwOK1lOW5_39CXsJ5BnOxA96eGcfIWQ",
+  },
   openGraph: {
     title: "Factward — Verify Every Claim Before You Publish",
     description:

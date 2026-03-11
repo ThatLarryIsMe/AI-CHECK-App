@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
-  transpilePackages: ["@proofmode/core"],
+  transpilePackages: ["@factward/core"],
   webpack: (config, { isServer }) => {
     if (isServer) {
       // pdf-parse bundles pdfjs-dist which tries to import 'canvas'.

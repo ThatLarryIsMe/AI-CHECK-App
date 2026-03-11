@@ -124,6 +124,7 @@ export interface ServerSessionUser {
   planStatus: string;
   currentPeriodEnd: Date | null;
   role: string;
+  inviteChecksRemaining: number;
 }
 
 export async function getSessionFromCookie(): Promise<ServerSessionUser | null> {
@@ -139,8 +140,9 @@ export async function getSessionFromCookie(): Promise<ServerSessionUser | null> 
       plan_status: string;
       current_period_end: Date | null;
       role: string;
+      invite_checks_remaining: number;
     }>(
-      `SELECT s.user_id, u.email, u.plan, u.plan_status, u.current_period_end, u.role
+      `SELECT s.user_id, u.email, u.plan, u.plan_status, u.current_period_end, u.role, u.invite_checks_remaining
        FROM sessions s
        JOIN users u ON u.id = s.user_id
        WHERE s.token = $1 AND s.expires_at > NOW()`,
@@ -155,6 +157,7 @@ export async function getSessionFromCookie(): Promise<ServerSessionUser | null> 
       planStatus: row.plan_status,
       currentPeriodEnd: row.current_period_end,
       role: row.role ?? "user",
+      inviteChecksRemaining: row.invite_checks_remaining ?? 0,
     };
   } catch {
     return null;

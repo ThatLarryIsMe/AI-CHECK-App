@@ -1,14 +1,14 @@
 /**
- * ProofMode Embeddable Badge Widget
+ * Factward Embeddable Badge Widget
  *
  * Usage:
- *   <div data-proofmode-badge="PACK_ID"></div>
+ *   <div data-factward-badge="PACK_ID"></div>
  *   <script src="https://your-domain.com/badge.js" async></script>
  *
  * Options (data attributes):
- *   data-proofmode-badge="PACK_ID"  — required, the pack UUID
- *   data-proofmode-theme="light"    — optional, "light" or "dark" (default: "dark")
- *   data-proofmode-size="compact"   — optional, "compact" or "full" (default: "full")
+ *   data-factward-badge="PACK_ID"  — required, the pack UUID
+ *   data-factward-theme="light"    — optional, "light" or "dark" (default: "dark")
+ *   data-factward-size="compact"   — optional, "compact" or "full" (default: "full")
  */
 (function () {
   "use strict";
@@ -24,11 +24,11 @@
   })();
 
   function createBadge(container) {
-    var packId = container.getAttribute("data-proofmode-badge");
+    var packId = container.getAttribute("data-factward-badge");
     if (!packId) return;
 
-    var theme = container.getAttribute("data-proofmode-theme") || "dark";
-    var size = container.getAttribute("data-proofmode-size") || "full";
+    var theme = container.getAttribute("data-factward-theme") || "dark";
+    var size = container.getAttribute("data-factward-size") || "full";
 
     // Loading state
     container.innerHTML =
@@ -111,7 +111,7 @@
       '<circle cx="8" cy="8" r="7" stroke="#22d3ee" stroke-width="1.5"/>' +
       '<path d="M5 8l2 2 4-4" stroke="#22d3ee" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>' +
       "</svg>" +
-      '<span style="font-size:13px;font-weight:700;color:' + text + ';">Verified by ProofMode</span>' +
+      '<span style="font-size:13px;font-weight:700;color:' + text + ';">Verified by Factward</span>' +
       "</div>" +
       // Trust score bar
       '<div style="margin-bottom:8px;">' +
@@ -159,7 +159,7 @@
 
   // Initialize all badges on the page
   function init() {
-    var badges = document.querySelectorAll("[data-proofmode-badge]");
+    var badges = document.querySelectorAll("[data-factward-badge]");
     for (var i = 0; i < badges.length; i++) {
       createBadge(badges[i]);
     }

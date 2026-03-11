@@ -48,9 +48,9 @@ export function Footer() {
           </div>
         </div>
 
-        <p className="mt-10 text-xs text-slate-600">
+        <div className="mt-8 border-t border-surface-800/60 pt-6 text-xs text-slate-600">
           &copy; {new Date().getFullYear()} Factward. All rights reserved.
-        </p>
+        </div>
       </div>
     </footer>
   );

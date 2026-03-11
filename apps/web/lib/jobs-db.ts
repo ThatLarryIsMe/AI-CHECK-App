@@ -1,5 +1,5 @@
 import { pool } from "@/lib/db";
-import type { EvidencePack } from "@proofmode/core";
+import type { EvidencePack } from "@factward/core";
 
 export type JobStatus = "queued" | "processing" | "complete" | "failed";
 

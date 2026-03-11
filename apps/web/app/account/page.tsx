@@ -3,7 +3,7 @@ import Link from "next/link"
 import { getSessionFromCookie } from "@/lib/auth"
 import { pool } from "@/lib/db"
 import { analyzePackDecay } from "@/lib/decay"
-import type { EvidencePack } from "@proofmode/core"
+import type { EvidencePack } from "@factward/core"
 
 async function getUsageToday(userId: string, plan: string, planStatus: string, role: string): Promise<{ used: number; limit: number }> {
       try {
@@ -141,6 +141,22 @@ export default async function AccountPage({
                         </span>
                       </div>
                     </div>
+
+                    {/* Invite bonus checks */}
+                    {user.inviteChecksRemaining > 0 && (
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Bonus checks</p>
+                        <p className="mt-1 font-medium text-white">
+                          {user.inviteChecksRemaining} free verification{user.inviteChecksRemaining !== 1 ? "s" : ""} remaining
+                        </p>
+                        <div className="mt-2 h-1.5 rounded-full bg-slate-700 overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-green-500 transition-all"
+                            style={{ width: `${(user.inviteChecksRemaining / 5) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
 
                     {/* Usage today */}
                     <div>

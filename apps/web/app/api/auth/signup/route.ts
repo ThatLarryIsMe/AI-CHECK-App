@@ -82,9 +82,12 @@ export async function POST(request: NextRequest) {
   const passwordHash = await hashPassword(password);
   const userId = crypto.randomUUID();
 
+  // Grant 5 bonus checks for invite code signups
+  const INVITE_BONUS_CHECKS = 5;
+
   await pool.query(
-    `INSERT INTO users (id, email, password_hash) VALUES ($1, $2, $3)`,
-    [userId, trimmedEmail, passwordHash]
+    `INSERT INTO users (id, email, password_hash, invite_checks_remaining) VALUES ($1, $2, $3, $4)`,
+    [userId, trimmedEmail, passwordHash, INVITE_BONUS_CHECKS]
   );
 
   const { token, expiresAt } = await createSession(userId);

@@ -46,8 +46,8 @@ export default async function ToolsPage() {
             <ol className="list-decimal space-y-1 pl-5 text-sm text-slate-300">
               <li>Drag the button to your browser&apos;s bookmarks bar</li>
               <li>Visit any article or webpage</li>
-              <li>Click &quot;Check with ProofMode&quot; in your bookmarks</li>
-              <li>ProofMode opens with the article text pre-loaded</li>
+              <li>Click &quot;Check with Factward&quot; in your bookmarks</li>
+              <li>Factward opens with the article text pre-loaded</li>
               <li>Get your verification report in seconds</li>
             </ol>
           </div>

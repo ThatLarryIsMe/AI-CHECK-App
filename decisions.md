@@ -19,7 +19,7 @@
 **Copy Link:** Calls `navigator.clipboard.writeText(window.location.href)`. Button shows inline green "✓ Copied!" state for 2 seconds then resets.
 
 **Copy Summary:** Builds a structured plaintext summary on the client from already-loaded pack data:
-- Header: `ProofMode v{VERSION}`, Pack ID, Generated At (if present)
+- Header: `Factward v{VERSION}`, Pack ID, Generated At (if present)
 - Totals line: supported / mixed / unsupported / total
 - Avg confidence (computed from existing `confidence` field)
 - Retrieval mode: "Evidence attached" when `evidence.length > 0`, else "LLM-only mode"
@@ -38,7 +38,7 @@
 
 **Decision:** Create `apps/web/app/admin/page.tsx` — a client-side admin dashboard that fetches `/api/admin/stats` and `/api/admin/health` in parallel and renders a structured weekly ops report.
 
-**Access control:** Page prompts for the `x-proofmode-key` on load (password input). Key is held in React state only; never persisted to localStorage or cookies. Incorrect keys surface the API error message inline with a re-enter option.
+**Access control:** Page prompts for the `x-factward-key` on load (password input). Key is held in React state only; never persisted to localStorage or cookies. Incorrect keys surface the API error message inline with a re-enter option.
 
 **Data displayed:**
 - **Lifetime Totals:** total jobs, total packs, waitlist signups, avg claims/pack
@@ -53,7 +53,7 @@
 **Decision:** Add a persistent sticky navigation header to `apps/web/app/layout.tsx` so every page in the app shares a consistent top bar without any per-page changes.
 
 **Structure:**
-- Left: `ProofMode` wordmark ("Proof" in white, "Mode" in cyan) linking to `/`, with a version badge (`v{VERSION}`) sourced from the shared `version` constant
+- Left: `Factward` wordmark ("Proof" in white, "Mode" in cyan) linking to `/`, with a version badge (`v{VERSION}`) sourced from the shared `version` constant
 - Right: three nav links — Verify (`/verify`), Trust (`/trust`), Admin (`/admin`)
 - `Admin` is intentionally muted (`text-slate-500`) to de-emphasise it as an ops-only route
 

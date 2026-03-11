@@ -63,11 +63,11 @@ export default function TrustPage() {
                 Trust & methodology
               </p>
               <h1 className="text-display-sm md:text-display font-semibold text-white">
-                How ProofMode works
+                How Factward works
               </h1>
               <p className="text-lg text-slate-400 leading-relaxed max-w-2xl">
                 Most fact-checking tools are black boxes. We think that defeats the purpose.
-                Here&apos;s exactly how ProofMode works, what each verdict means, and where
+                Here&apos;s exactly how Factward works, what each verdict means, and where
                 our limitations are. Full transparency — because a fact-checker you can&apos;t
                 verify is just another source of trust you have to take on faith.
               </p>
@@ -184,7 +184,7 @@ export default function TrustPage() {
                 decide for yourself whether you agree with our assessment.
               </p>
               <p className="text-sm text-slate-400 leading-relaxed">
-                ProofMode is a tool to help you think critically — not a replacement for
+                Factward is a tool to help you think critically — not a replacement for
                 it. We show our work so you can verify the verifier.
               </p>
             </section>
@@ -196,7 +196,7 @@ export default function TrustPage() {
               </h2>
               <div className="rounded-lg border border-surface-800/60 bg-surface-900 p-5 text-sm text-slate-400 space-y-2">
                 <p>
-                  ProofMode is a powerful analytical tool, but it has limitations you
+                  Factward is a powerful analytical tool, but it has limitations you
                   should be aware of:
                 </p>
                 <ul className="list-disc pl-5 space-y-1.5 leading-relaxed">
@@ -205,7 +205,7 @@ export default function TrustPage() {
                   <li>Search snippets shown in reports are summaries from the search engine, not direct quotes from the source page</li>
                   <li>Satire, sarcasm, and figurative language may be misinterpreted as factual claims</li>
                   <li>Evidence quality depends on what is available on the open web at the time of verification</li>
-                  <li>ProofMode is a verification aid, not a replacement for professional fact-checking in legal, medical, or financial contexts</li>
+                  <li>Factward is a verification aid, not a replacement for professional fact-checking in legal, medical, or financial contexts</li>
                 </ul>
               </div>
             </section>

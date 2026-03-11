@@ -41,7 +41,7 @@ const comparisonRows = [
 
 const faqs = [
   {
-    q: "Can I use ProofMode without an account?",
+    q: "Can I use Factward without an account?",
     a: "Yes! You get 1 free trial check without signing up. Create a free account (takes seconds) to get 2 verifications per day.",
   },
   {
@@ -158,7 +158,7 @@ export default async function PricingPage() {
         <div className="mt-8 text-center">
           <p className="text-sm text-slate-500">
             Need higher limits or team access?{" "}
-            <a href="mailto:hello@proofmode.ai" className="text-brand-400 hover:text-brand-300">
+            <a href="mailto:hello@factward.com" className="text-brand-400 hover:text-brand-300">
               Contact us
             </a>
           </p>

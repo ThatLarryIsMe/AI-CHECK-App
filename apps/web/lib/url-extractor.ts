@@ -115,7 +115,14 @@ export async function extractTextFromUrl(url: string): Promise<string> {
   // --- Primary fetch ---
   let response: Response;
   try {
-    response = await fetchWithTimeout(url, { headers: buildHeaders() });
+    response = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        "User-Agent": "Factward/1.0 (fact-checker)",
+        Accept: "text/html,application/xhtml+xml,*/*",
+      },
+      redirect: "follow",
+    });
   } catch (err: unknown) {
     if (err instanceof Error && (err.name === "AbortError" || err.message.includes("abort"))) {
       throw Object.assign(

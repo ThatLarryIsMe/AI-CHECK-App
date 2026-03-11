@@ -38,13 +38,13 @@ function computeStats(pack: { claims: Array<{ status: string; confidence: number
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const pack = await getPack(params.id);
   if (!pack) {
-    return { title: "Report Not Found — ProofMode" };
+    return { title: "Report Not Found — Factward" };
   }
 
   const { total, supported, unsupported, trustScore } = computeStats(pack);
 
-  const title = `ProofMode Report — ${trustScore}% Trust Score`;
-  const description = `${total} claims analyzed: ${supported} supported, ${unsupported} unsupported. Verified by ProofMode AI fact-checking.`;
+  const title = `Factward Report — ${trustScore}% Trust Score`;
+  const description = `${total} claims analyzed: ${supported} supported, ${unsupported} unsupported. Verified by Factward AI fact-checking.`;
 
   return {
     title,
@@ -52,7 +52,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     openGraph: {
       title,
       description,
-      siteName: "ProofMode",
+      siteName: "Factward",
       type: "article",
     },
     twitter: {
