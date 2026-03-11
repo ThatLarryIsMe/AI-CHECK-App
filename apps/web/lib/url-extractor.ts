@@ -113,6 +113,8 @@ export async function extractTextFromUrl(url: string): Promise<string> {
   }
 
   // --- Primary fetch ---
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   let response: Response;
   try {
     response = await fetch(url, {
@@ -134,6 +136,8 @@ export async function extractTextFromUrl(url: string): Promise<string> {
       new Error(`Failed to fetch URL: ${err instanceof Error ? err.message : "unknown"}`),
       { type: "URL_FETCH_FAILED" }
     );
+  } finally {
+    clearTimeout(timeout);
   }
 
   // --- 403 / 401: try jina.ai proxy ---
