@@ -35,7 +35,8 @@ export default function SignupPage() {
         setError(data.error ?? "Signup failed");
         return;
       }
-      router.push("/verify");
+      // Full page reload so the server layout re-reads the session cookie
+      window.location.href = "/verify";
     } catch {
       setError("Network error. Please try again.");
     } finally {

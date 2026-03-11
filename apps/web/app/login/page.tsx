@@ -26,7 +26,8 @@ export default function LoginPage() {
         setError(data.error ?? "Login failed");
         return;
       }
-      router.push("/verify");
+      // Full page reload so the server layout re-reads the session cookie
+      window.location.href = "/verify";
     } catch {
       setError("Network error. Please try again.");
     } finally {
