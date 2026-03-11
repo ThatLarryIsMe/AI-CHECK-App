@@ -41,14 +41,13 @@ export default async function RootLayout({
           user={
             navUser
               ? {
-                  plan: navUser.plan,
-                  planStatus: navUser.planStatus,
+                  email: navUser.email,
                   role: navUser.role,
                 }
               : null
           }
         />
-        <div className="flex-1">{children}</div>
+        <main className="flex-1">{children}</main>
         <Footer />
       </body>
     </html>
