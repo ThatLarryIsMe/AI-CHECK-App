@@ -7,6 +7,21 @@ export interface RetrievedEvidence {
   retrievedAt: string;
 }
 
+/** Strip HTML tags and decode common HTML entities from Brave Search API results */
+function stripHtml(raw: string): string {
+  return raw
+    .replace(/<[^>]+>/g, "")
+    .replace(/&#x27;/g, "'")
+    .replace(/&#x2F;/g, "/")
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+    .trim();
+}
+
 const BRAVE_SEARCH_URL = "https://api.search.brave.com/res/v1/web/search";
 const BRAVE_TIMEOUT_MS = 8_000;
 const MAX_RESULTS_PER_QUERY = 5;
@@ -124,9 +139,10 @@ export async function retrieveEvidence(
       .slice(0, MAX_EVIDENCE_RETURNED)
       .map((item) => ({
         sourceUrl: item.url,
-        sourceTitle: item.title?.trim() || item.url,
-        quotedSpan:
-          item.description?.trim() || "No snippet provided by search engine.",
+        sourceTitle: item.title ? stripHtml(item.title) : item.url,
+        quotedSpan: item.description
+          ? stripHtml(item.description)
+          : "No snippet provided by search engine.",
         retrievedAt,
       }));
   } catch (error) {

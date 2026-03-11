@@ -9,6 +9,7 @@ const nextConfig = {
       config.resolve.alias = {
         ...config.resolve.alias,
         canvas: false,
+        "@napi-rs/canvas": false,
       };
     }
     return config;

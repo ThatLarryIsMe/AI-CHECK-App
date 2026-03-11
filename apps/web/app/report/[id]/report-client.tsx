@@ -184,7 +184,26 @@ export function ReportClient({
   }
 
   function handleShareTwitter() {
-    const text = `I just verified ${stats.total} claims with Factward AI — Trust Score: ${stats.trustScore}%\n\n${stats.supported} supported, ${stats.unsupported} unsupported.`;
+    const trustLabel =
+      stats.trustScore >= 80 ? "High Trust"
+        : stats.trustScore >= 50 ? "Mixed"
+          : "Low Trust";
+
+    const parts: string[] = [];
+    if (stats.supported > 0) parts.push(`${stats.supported} supported`);
+    if (stats.unsupported > 0) parts.push(`${stats.unsupported} unsupported`);
+    if (stats.mixed > 0) parts.push(`${stats.mixed} conflicting`);
+    if (stats.insufficient > 0) parts.push(`${stats.insufficient} unverifiable`);
+
+    const text = [
+      `Fact-checked ${stats.total} claims with @Factward`,
+      ``,
+      `Trust Score: ${stats.trustScore}% (${trustLabel})`,
+      parts.join(" | "),
+      ``,
+      `Verify anything at factward.com`,
+    ].join("\n");
+
     const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(reportUrl)}`;
     window.open(url, "_blank", "noopener,noreferrer");
   }
@@ -452,7 +471,6 @@ export function ReportClient({
                           {item.sourceTitle}
                         </a>
                         <p className="mt-1.5 border-l-2 border-slate-600 pl-3 text-sm text-slate-300">
-                          <span className="text-xs text-slate-500">Search snippet: </span>
                           {item.quotedSpan}
                         </p>
                       </div>
