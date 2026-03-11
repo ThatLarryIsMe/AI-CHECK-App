@@ -142,6 +142,22 @@ export default async function AccountPage({
                       </div>
                     </div>
 
+                    {/* Invite bonus checks */}
+                    {user.inviteChecksRemaining > 0 && (
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Bonus checks</p>
+                        <p className="mt-1 font-medium text-white">
+                          {user.inviteChecksRemaining} free verification{user.inviteChecksRemaining !== 1 ? "s" : ""} remaining
+                        </p>
+                        <div className="mt-2 h-1.5 rounded-full bg-slate-700 overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-green-500 transition-all"
+                            style={{ width: `${(user.inviteChecksRemaining / 5) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
                     {/* Usage today */}
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Usage today</p>

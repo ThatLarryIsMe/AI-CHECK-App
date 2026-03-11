@@ -163,6 +163,9 @@ CREATE INDEX IF NOT EXISTS idx_login_attempts_ip_at ON login_attempts (ip, attem
 -- Admin role support
 ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'user';
 
+-- Invite code bonus checks (e.g. 5 free checks for new signups with invite code)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS invite_checks_remaining INTEGER NOT NULL DEFAULT 0;
+
 -- Phase X1: Cleanup function for expired data (H4/H5)
 -- Call via cron (e.g., Neon scheduled queries) or admin endpoint
 CREATE OR REPLACE FUNCTION cleanup_expired_data() RETURNS void AS $$
