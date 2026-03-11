@@ -43,7 +43,7 @@ async function fetchWithTimeout(
  * Returns extracted markdown/text or null if the proxy also fails.
  */
 async function tryJinaFallback(originalUrl: string): Promise<string | null> {
-  // jina accepts: https://r.jina.ai/<original-url>
+  // jina accepts: https://r.jina.ai/<url>
   const jinaUrl = `https://r.jina.ai/${originalUrl}`;
   let res: Response;
   try {
@@ -78,8 +78,8 @@ function extractReadableText(html: string, url: string): string {
   } catch {
     // Absolute last resort: naive regex strip
     return html
-      .replace(/<script[\s\S]*?<\/script>/gi, " ")
-      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, " ")
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, " ")
       .replace(/<[^>]+>/g, " ")
       .replace(/[ \t]+/g, " ")
       .replace(/\n{3,}/g, "\n\n")
@@ -92,10 +92,10 @@ function extractReadableText(html: string, url: string): string {
  * Returns plain text suitable for the verification engine.
  *
  * Strategy:
- *   1. Fetch with realistic browser headers + redirect follow + 10s timeout.
- *   2. Guard on content-length header before downloading.
- *   3. If 403/401 → try jina.ai proxy fallback.
- *   4. Parse with @mozilla/readability for clean article extraction.
+ * 1. Fetch with realistic browser headers + redirect follow + 10s timeout.
+ * 2. Guard on content-length header before downloading.
+ * 3. If 403/401 → try jina.ai proxy fallback.
+ * 4. Parse with @mozilla/readability for clean article extraction.
  */
 export async function extractTextFromUrl(url: string): Promise<string> {
   // Validate URL format
@@ -105,6 +105,7 @@ export async function extractTextFromUrl(url: string): Promise<string> {
   } catch {
     throw Object.assign(new Error("Invalid URL format"), { type: "INVALID_URL" });
   }
+
   if (!["http:", "https:"].includes(parsed.protocol)) {
     throw Object.assign(
       new Error("Only HTTP/HTTPS URLs are supported"),
@@ -115,14 +116,7 @@ export async function extractTextFromUrl(url: string): Promise<string> {
   // --- Primary fetch ---
   let response: Response;
   try {
-    response = await fetch(url, {
-      signal: controller.signal,
-      headers: {
-        "User-Agent": "Factward/1.0 (fact-checker)",
-        Accept: "text/html,application/xhtml+xml,*/*",
-      },
-      redirect: "follow",
-    });
+    response = await fetchWithTimeout(url, { headers: buildHeaders() });
   } catch (err: unknown) {
     if (err instanceof Error && (err.name === "AbortError" || err.message.includes("abort"))) {
       throw Object.assign(
@@ -144,9 +138,7 @@ export async function extractTextFromUrl(url: string): Promise<string> {
     }
     throw Object.assign(
       new Error(
-        "This site blocks automated access (HTTP " +
-          response.status +
-          "). Paste the article text or upload a PDF instead."
+        "This site blocks automated access (HTTP " + response.status + "). Paste the article text or upload a PDF instead."
       ),
       { type: "URL_BLOCKED" }
     );
@@ -191,7 +183,6 @@ export async function extractTextFromUrl(url: string): Promise<string> {
 
   // --- Extract readable text ---
   const text = extractReadableText(html, url);
-
   if (text.length < 50) {
     throw Object.assign(
       new Error("Could not extract meaningful text from the page"),
