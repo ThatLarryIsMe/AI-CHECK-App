@@ -21,7 +21,7 @@ const resultsLink = document.getElementById("results-link");
 const loadingDiv = document.getElementById("loading");
 const loadingStep = document.getElementById("loading-step");
 
-// ── State ──
+// ── Session helpers ──
 
 async function getSession() {
   const data = await chrome.storage.local.get(["sessionToken", "email"]);
@@ -74,7 +74,9 @@ loginForm.addEventListener("submit", async (e) => {
     }
 
     const data = await res.json();
-    // The API returns a session token — store it
+    if (!data.token) {
+      throw new Error("Login succeeded but no token was returned.");
+    }
     await saveSession(data.token, loginEmail.value.trim());
     await initView();
   } catch (err) {
@@ -105,11 +107,23 @@ function hideLoading() {
   loadingDiv.hidden = true;
 }
 
+function showError(message) {
+  resultsList.textContent = "";
+  const p = document.createElement("p");
+  p.className = "error";
+  p.textContent = message;
+  resultsList.appendChild(p);
+  resultsDiv.hidden = false;
+}
+
 function renderResults(pack) {
-  resultsList.innerHTML = "";
+  resultsList.textContent = "";
   const claims = pack.claims || [];
   if (claims.length === 0) {
-    resultsList.innerHTML = '<p class="hint">No verifiable claims found.</p>';
+    const p = document.createElement("p");
+    p.className = "hint";
+    p.textContent = "No verifiable claims found.";
+    resultsList.appendChild(p);
     resultsDiv.hidden = false;
     return;
   }
@@ -139,16 +153,28 @@ function renderResults(pack) {
   resultsDiv.hidden = false;
 }
 
-async function apiVerify(body) {
+async function authFetch(url, options = {}) {
   const session = await getSession();
   if (!session) throw new Error("Not signed in");
 
-  const res = await fetch(`${API_BASE}/api/verify`, {
+  const headers = { ...options.headers };
+  headers["Authorization"] = `Bearer ${session.sessionToken}`;
+
+  const res = await fetch(url, { ...options, headers });
+
+  if (res.status === 401) {
+    await clearSession();
+    await initView();
+    throw new Error("Session expired — please sign in again.");
+  }
+
+  return res;
+}
+
+async function apiVerify(body) {
+  const res = await authFetch(`${API_BASE}/api/verify`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${session.sessionToken}`,
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
 
@@ -161,7 +187,7 @@ async function apiVerify(body) {
 }
 
 async function fetchPack(packId) {
-  const res = await fetch(`${API_BASE}/api/packs/${packId}/public`);
+  const res = await authFetch(`${API_BASE}/api/packs/${packId}/public`);
   if (!res.ok) throw new Error("Failed to load results");
   return res.json();
 }
@@ -206,8 +232,7 @@ verifyBtn.addEventListener("click", async () => {
     }
   } catch (err) {
     hideLoading();
-    resultsList.innerHTML = `<p class="error">${err.message}</p>`;
-    resultsDiv.hidden = false;
+    showError(err.message);
   } finally {
     verifyBtn.disabled = false;
     scanPageBtn.disabled = false;
@@ -279,8 +304,7 @@ scanPageBtn.addEventListener("click", async () => {
     }
   } catch (err) {
     hideLoading();
-    resultsList.innerHTML = `<p class="error">${err.message}</p>`;
-    resultsDiv.hidden = false;
+    showError(err.message);
   } finally {
     verifyBtn.disabled = false;
     scanPageBtn.disabled = false;

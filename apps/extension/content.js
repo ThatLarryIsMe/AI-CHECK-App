@@ -18,7 +18,6 @@
     document.querySelectorAll(`[${HIGHLIGHT_ATTR}]`).forEach((el) => {
       const parent = el.parentNode;
       if (!parent) return;
-      // Unwrap: replace the highlight span with its text content
       const textNode = document.createTextNode(el.textContent || "");
       parent.replaceChild(textNode, el);
       parent.normalize();
@@ -26,12 +25,20 @@
     document.querySelectorAll(`.${TOOLTIP_CLASS}`).forEach((el) => el.remove());
   }
 
+  // ── Escape text for safe display ──
+
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
   // ── Find and wrap matching text in the DOM ──
 
   function highlightTextInNode(rootNode, searchText, claim) {
     const walker = document.createTreeWalker(rootNode, NodeFilter.SHOW_TEXT, null);
-    const normalizedSearch = searchText.toLowerCase().replace(/\s+/g, " ").trim();
-    // Use first 60 chars for matching (claims can be long and may not appear verbatim)
+    const normalizedSearch = searchText.normalize("NFC").toLowerCase().replace(/\s+/g, " ").trim();
+    // Use first 80 chars for matching (claims can be long and may not appear verbatim)
     const matchTarget = normalizedSearch.slice(0, 80);
 
     const textNodes = [];
@@ -41,7 +48,7 @@
 
     for (const textNode of textNodes) {
       const nodeText = textNode.textContent || "";
-      const normalizedNode = nodeText.toLowerCase().replace(/\s+/g, " ");
+      const normalizedNode = nodeText.normalize("NFC").toLowerCase().replace(/\s+/g, " ");
       const idx = normalizedNode.indexOf(matchTarget);
       if (idx === -1) continue;
 
@@ -50,7 +57,6 @@
       let normalizedPos = 0;
       for (let i = 0; i < nodeText.length && normalizedPos < idx; i++) {
         if (/\s/.test(nodeText[i])) {
-          // Collapse whitespace
           while (i + 1 < nodeText.length && /\s/.test(nodeText[i + 1])) i++;
           normalizedPos++;
         } else {
@@ -62,10 +68,6 @@
       // Approximate end position
       const matchLen = Math.min(searchText.length, nodeText.length - origStart);
       const origEnd = origStart + matchLen;
-
-      const range = document.createRange();
-      range.setStart(textNode, origStart);
-      range.setEnd(textNode, Math.min(origEnd, nodeText.length));
 
       const colors = VERDICT_COLORS[claim.status] || VERDICT_COLORS.insufficient;
 
@@ -84,7 +86,26 @@
       highlight.addEventListener("mouseenter", (e) => showTooltip(e, claim, colors));
       highlight.addEventListener("mouseleave", hideTooltip);
 
-      range.surroundContents(highlight);
+      try {
+        const range = document.createRange();
+        range.setStart(textNode, origStart);
+        range.setEnd(textNode, Math.min(origEnd, nodeText.length));
+        range.surroundContents(highlight);
+      } catch {
+        // surroundContents fails when range crosses element boundaries —
+        // fall back to wrapping just the text node portion
+        try {
+          const range = document.createRange();
+          range.setStart(textNode, origStart);
+          range.setEnd(textNode, Math.min(origEnd, nodeText.length));
+          const contents = range.extractContents();
+          highlight.appendChild(contents);
+          range.insertNode(highlight);
+        } catch {
+          // DOM structure too complex — skip this claim
+          return false;
+        }
+      }
       return true; // Only highlight first occurrence
     }
 
@@ -118,28 +139,36 @@
 
     const confidence = Math.round((claim.confidence ?? 0) * 100);
 
-    tooltip.innerHTML = `
-      <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
-        <span style="
-          display: inline-block;
-          padding: 2px 8px;
-          border-radius: 4px;
-          font-size: 11px;
-          font-weight: 600;
-          text-transform: uppercase;
-          background: ${colors.bg};
-          color: ${colors.text};
-          border: 1px solid ${colors.border};
-        ">${claim.status}</span>
-        <span style="color: #64748b; font-size: 11px;">${confidence}% confidence</span>
-      </div>
-      <p style="margin: 0; color: #94a3b8; font-size: 11px;">
-        ${claim.reasoning || "Verified by Factward AI."}
-      </p>
-      <p style="margin: 4px 0 0; color: #475569; font-size: 10px;">
-        Factward · click for full report
-      </p>
+    // Build tooltip with DOM APIs to avoid XSS
+    const header = document.createElement("div");
+    header.style.cssText = "display: flex; align-items: center; gap: 6px; margin-bottom: 6px;";
+
+    const badge = document.createElement("span");
+    badge.style.cssText = `
+      display: inline-block; padding: 2px 8px; border-radius: 4px;
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+      background: ${colors.bg}; color: ${colors.text}; border: 1px solid ${colors.border};
     `;
+    badge.textContent = claim.status;
+
+    const confSpan = document.createElement("span");
+    confSpan.style.cssText = "color: #64748b; font-size: 11px;";
+    confSpan.textContent = `${confidence}% confidence`;
+
+    header.appendChild(badge);
+    header.appendChild(confSpan);
+
+    const reasoning = document.createElement("p");
+    reasoning.style.cssText = "margin: 0; color: #94a3b8; font-size: 11px;";
+    reasoning.textContent = claim.reasoning || "Verified by Factward AI.";
+
+    const footer = document.createElement("p");
+    footer.style.cssText = "margin: 4px 0 0; color: #475569; font-size: 10px;";
+    footer.textContent = "Factward";
+
+    tooltip.appendChild(header);
+    tooltip.appendChild(reasoning);
+    tooltip.appendChild(footer);
 
     document.body.appendChild(tooltip);
 
@@ -178,7 +207,6 @@
       const claims = message.claims || [];
       if (claims.length === 0) return;
 
-      // Try to find claims in the page content
       const root = document.querySelector("article") || document.querySelector("main") || document.body;
       for (const claim of claims) {
         if (!claim.text) continue;

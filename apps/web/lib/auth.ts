@@ -68,7 +68,14 @@ interface SessionUser {
 export async function getUserFromRequest(
   request: NextRequest
 ): Promise<SessionUser | null> {
-  const token = request.cookies.get(COOKIE_NAME)?.value;
+  // Check cookie first, then fall back to Bearer token (for browser extension)
+  let token = request.cookies.get(COOKIE_NAME)?.value ?? null;
+  if (!token) {
+    const authHeader = request.headers.get("authorization");
+    if (authHeader?.startsWith("Bearer ")) {
+      token = authHeader.slice(7);
+    }
+  }
   if (!token) return null;
 
   const result = await pool.query<{ user_id: string; email: string }>(

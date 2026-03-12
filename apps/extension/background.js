@@ -52,6 +52,18 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       body: JSON.stringify({ text }),
     });
 
+    if (verifyRes.status === 401) {
+      await chrome.storage.local.remove(["sessionToken", "email"]);
+      chrome.notifications.create({
+        type: "basic",
+        iconUrl: "icons/icon-48.png",
+        title: "Factward",
+        message: "Session expired — please sign in again via the popup.",
+      });
+      chrome.action.setBadgeText({ text: "", tabId: tab.id });
+      return;
+    }
+
     if (!verifyRes.ok) {
       const err = await verifyRes.json().catch(() => ({}));
       throw new Error(err.error || `Verification failed (${verifyRes.status})`);
