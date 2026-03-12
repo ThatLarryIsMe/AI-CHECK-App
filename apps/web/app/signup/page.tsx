@@ -7,22 +7,42 @@ export default function SignupPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [inviteCode, setInviteCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const passwordStrength = password.length === 0
-    ? null
-    : password.length < 8
-      ? "weak"
-      : password.length < 12
-        ? "fair"
-        : "strong";
+  const passwordStrength = (() => {
+    if (password.length === 0) return null;
+    if (password.length < 8) return "weak" as const;
+    let score = 0;
+    if (password.length >= 12) score++;
+    if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
+    if (/\d/.test(password)) score++;
+    if (/[^a-zA-Z0-9]/.test(password)) score++;
+    return score <= 1 ? ("fair" as const) : ("strong" as const);
+  })();
+
+  const passwordStrengthLabel =
+    passwordStrength === "weak" ? "Too short"
+    : passwordStrength === "fair" ? "Fair — add uppercase, numbers, or symbols"
+    : passwordStrength === "strong" ? "Strong"
+    : null;
+
+  const passwordsMatch = confirmPassword.length === 0 || password === confirmPassword;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+    if (passwordStrength === "weak") {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch("/api/auth/signup", {
@@ -112,10 +132,10 @@ export default function SignupPage() {
                 <div className="mt-2 flex items-center gap-2">
                   <div className="flex gap-1 flex-1">
                     <div className={`h-1 flex-1 rounded-full ${
-                      passwordStrength === "weak" ? "bg-red-500" : "bg-brand-500"
+                      passwordStrength === "weak" ? "bg-red-500" : passwordStrength === "fair" ? "bg-yellow-500" : "bg-brand-500"
                     }`} />
                     <div className={`h-1 flex-1 rounded-full ${
-                      passwordStrength === "weak" ? "bg-slate-700" : "bg-brand-500"
+                      passwordStrength === "weak" ? "bg-slate-700" : passwordStrength === "fair" ? "bg-yellow-500" : "bg-brand-500"
                     }`} />
                     <div className={`h-1 flex-1 rounded-full ${
                       passwordStrength === "strong" ? "bg-brand-500" : "bg-slate-700"
@@ -125,12 +145,28 @@ export default function SignupPage() {
                     passwordStrength === "weak"
                       ? "text-red-400"
                       : passwordStrength === "fair"
-                        ? "text-slate-400"
+                        ? "text-yellow-400"
                         : "text-brand-400"
                   }`}>
-                    {passwordStrength === "weak" ? "Too short" : passwordStrength === "fair" ? "Fair" : "Strong"}
+                    {passwordStrengthLabel}
                   </span>
                 </div>
+              )}
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-slate-300">
+                Confirm password
+              </label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                placeholder="Re-enter your password"
+                className="w-full rounded-lg border border-surface-800/60 bg-surface-950 px-3.5 py-2.5 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-500/50"
+              />
+              {!passwordsMatch && (
+                <p className="mt-1.5 text-xs text-red-400">Passwords do not match</p>
               )}
             </div>
             <div>
@@ -160,7 +196,7 @@ export default function SignupPage() {
             )}
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !passwordsMatch || passwordStrength === "weak"}
               className="mt-1 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-500 disabled:opacity-50"
             >
               {loading ? "Creating account..." : "Create account"}
