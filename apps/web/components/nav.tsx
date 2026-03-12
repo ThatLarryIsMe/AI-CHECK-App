@@ -39,7 +39,7 @@ export function Nav({ user }: NavProps) {
           href="/"
           className="flex items-center gap-1.5 text-lg font-bold tracking-tight text-white hover:opacity-90 transition"
         >
-          <svg width="22" height="22" viewBox="0 0 16 16" fill="none" className="text-brand-500">
+          <svg width="22" height="22" viewBox="0 0 16 16" fill="none" className="text-brand-500" aria-hidden="true">
             <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" />
             <path d="M5 8l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>

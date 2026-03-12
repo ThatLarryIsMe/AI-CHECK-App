@@ -8,7 +8,7 @@ export function Footer() {
           {/* Brand */}
           <div className="space-y-2">
             <div className="flex items-center gap-1.5 text-sm font-bold text-white">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-brand-500">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-brand-500" aria-hidden="true">
                 <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" />
                 <path d="M5 8l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
