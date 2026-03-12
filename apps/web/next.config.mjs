@@ -2,6 +2,10 @@
 const nextConfig = {
   output: "standalone",
   transpilePackages: ["@factward/core"],
+  // Externalize packages that must run as native Node.js modules (not webpack-bundled)
+  experimental: {
+    serverComponentsExternalPackages: ["pdf-parse", "pdfjs-dist", "jsdom", "@mozilla/readability"],
+  },
   webpack: (config, { isServer }) => {
     if (isServer) {
       // pdfjs-dist tries to import 'canvas' for node-canvas rendering.
@@ -14,6 +18,5 @@ const nextConfig = {
     }
     return config;
   },
-  serverExternalPackages: ["jsdom", "@mozilla/readability"],
 };
 export default nextConfig;
