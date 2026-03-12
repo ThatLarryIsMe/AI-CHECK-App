@@ -21,9 +21,17 @@ const LLMJsonResponseSchema = z.object({
   ),
 });
 
+/**
+ * Call the OpenAI chat completions API.
+ *
+ * @param model — defaults to "gpt-4o-mini" for lightweight tasks.
+ *   Use "gpt-4o" only for classification where reasoning quality matters.
+ *   This keeps costs ~15x lower for extraction/query-generation calls.
+ */
 export async function callLLM(
   systemPrompt: string,
-  userMessage: string
+  userMessage: string,
+  model: "gpt-4o" | "gpt-4o-mini" = "gpt-4o-mini"
 ): Promise<unknown> {
   const apiKey = getApiKey();
 
@@ -41,7 +49,7 @@ export async function callLLM(
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: "gpt-4o",
+        model,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userMessage },

@@ -97,6 +97,29 @@ function extractReadableText(html: string, url: string): string {
  *   3. If 403/401 → try jina.ai proxy fallback.
  *   4. Parse with @mozilla/readability for clean article extraction.
  */
+/**
+ * Block SSRF: reject URLs that resolve to private/internal IP ranges.
+ */
+function isPrivateHost(hostname: string): boolean {
+  const h = hostname.toLowerCase();
+  if (h === "localhost" || h === "127.0.0.1" || h === "[::1]") return true;
+  if (h === "169.254.169.254" || h === "metadata.google.internal") return true;
+  if (h.endsWith(".internal") || h.endsWith(".local")) return true;
+
+  const ipv4Match = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (ipv4Match) {
+    const [, a, b] = ipv4Match.map(Number);
+    if (a === 10) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 192 && b === 168) return true;
+    if (a === 169 && b === 254) return true;
+    if (a === 0 || a === 127) return true;
+  }
+
+  if (h.startsWith("[")) return true;
+  return false;
+}
+
 export async function extractTextFromUrl(url: string): Promise<string> {
   // Validate URL format
   let parsed: URL;
@@ -109,6 +132,14 @@ export async function extractTextFromUrl(url: string): Promise<string> {
     throw Object.assign(
       new Error("Only HTTP/HTTPS URLs are supported"),
       { type: "INVALID_URL" }
+    );
+  }
+
+  // SSRF protection: block private/internal hosts
+  if (isPrivateHost(parsed.hostname)) {
+    throw Object.assign(
+      new Error("URLs pointing to private or internal networks are not allowed"),
+      { type: "SSRF_BLOCKED" }
     );
   }
 

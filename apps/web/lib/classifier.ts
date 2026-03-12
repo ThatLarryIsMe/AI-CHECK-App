@@ -131,7 +131,8 @@ export async function classifyClaim(
   const evidenceContext = formatEvidenceContext(evidence);
   const userMessage = `Claim: "${claim}"\n\nEvidence:\n${evidenceContext}`;
 
-  const raw = await callLLM(SYSTEM_PROMPT, userMessage);
+  // Classification is the most critical step — use the full gpt-4o model
+  const raw = await callLLM(SYSTEM_PROMPT, userMessage, "gpt-4o");
   const parsed = ClassificationSchema.parse(raw);
   const llmClassification = parsed.classification;
   const status = LLM_CLASSIFICATION_MAP[llmClassification];
