@@ -253,6 +253,7 @@ export function VerifyClient({ plan = "free", planStatus = "inactive", role = "u
                     ? "bg-surface-700 text-white shadow-sm"
                     : "text-slate-400 hover:text-slate-200"
                 }`}
+                disabled={loading}
                 onClick={() => setActiveTab(tab.key)}
               >
                 {tab.label}
@@ -265,11 +266,12 @@ export function VerifyClient({ plan = "free", planStatus = "inactive", role = "u
               {activeTab === "text" && (
                 <div className="relative">
                   <textarea
-                    className="min-h-[160px] w-full resize-y rounded-lg border border-surface-800/60 bg-surface-950 p-4 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500/50 placeholder:text-slate-600"
+                    className="min-h-[160px] w-full resize-y rounded-lg border border-surface-800/60 bg-surface-950 p-4 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500/50 placeholder:text-slate-600 disabled:opacity-50"
                     value={text}
                     onChange={(e) => setText(e.target.value)}
                     placeholder="Paste the article, draft, or content you want to verify..."
                     maxLength={charLimit}
+                    disabled={loading}
                   />
                   <span className="absolute bottom-3 right-3 text-xs text-slate-600">
                     {text.length.toLocaleString()} / {charLimit.toLocaleString()}
@@ -284,10 +286,11 @@ export function VerifyClient({ plan = "free", planStatus = "inactive", role = "u
                   </p>
                   <input
                     type="url"
-                    className="w-full rounded-lg border border-surface-800/60 bg-surface-950 p-3 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500/50 placeholder:text-slate-600"
+                    className="w-full rounded-lg border border-surface-800/60 bg-surface-950 p-3 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500/50 placeholder:text-slate-600 disabled:opacity-50"
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
                     placeholder="https://example.com/article"
+                    disabled={loading}
                   />
                 </div>
               )}
