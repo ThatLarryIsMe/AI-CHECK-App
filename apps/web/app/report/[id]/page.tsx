@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cache } from "react";
 import { getPack } from "@/lib/jobs-db";
 import { VERSION } from "@/../../version";
 import { ReportClient } from "./report-client";
@@ -7,6 +8,9 @@ import { analyzePackDecay } from "@/lib/decay";
 interface PageProps {
   params: { id: string };
 }
+
+// Deduplicate the DB query between generateMetadata and the page component
+const getCachedPack = cache((id: string) => getPack(id));
 
 function computeStats(pack: { claims: Array<{ status: string; confidence: number }> }) {
   const claims = pack.claims ?? [];
@@ -36,7 +40,7 @@ function computeStats(pack: { claims: Array<{ status: string; confidence: number
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const pack = await getPack(params.id);
+  const pack = await getCachedPack(params.id);
   if (!pack) {
     return { title: "Report Not Found — Factward" };
   }
@@ -65,7 +69,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function ReportPage({ params }: PageProps) {
   // Server-side fetch for instant load + SEO
-  const pack = await getPack(params.id);
+  const pack = await getCachedPack(params.id);
 
   if (!pack) {
     return (

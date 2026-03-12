@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { EvidencePack } from "@factward/core";
 
@@ -79,7 +79,7 @@ function TrustScoreGauge({ score }: { score: number }) {
 
   return (
     <div className="flex flex-col items-center">
-      <svg width="160" height="100" viewBox="0 0 160 100">
+      <svg width="160" height="100" viewBox="0 0 160 100" role="img" aria-label={`Trust score: ${score}% — ${label}`}>
         <path
           d="M 10 90 A 60 60 0 0 1 150 90"
           fill="none"
@@ -171,6 +171,16 @@ export function ReportClient({
   const [embedCopyState, setEmbedCopyState] = useState<"idle" | "copied">("idle");
   const [widgetCopyState, setWidgetCopyState] = useState<"idle" | "copied">("idle");
   const [showEmbed, setShowEmbed] = useState(false);
+
+  // Close embed dialog on Escape key
+  useEffect(() => {
+    if (!showEmbed) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowEmbed(false);
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [showEmbed]);
 
   const reportUrl = typeof window !== "undefined" ? window.location.href : "";
   const origin = typeof window !== "undefined" ? window.location.origin : "";

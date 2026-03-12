@@ -57,15 +57,18 @@ export function VerifyClient({ plan = "free", planStatus = "inactive", role = "u
     }
   }, [searchParams]);
 
-  // Animate loading steps
+  // Animate loading steps — step 0 is set immediately on submit,
+  // steps 1-2 advance on a timer during the verify API call,
+  // step 3 is set when the response arrives (in onSubmit).
   useEffect(() => {
     if (!loading) {
       setLoadingStep(0);
       return;
     }
+    // Only auto-advance steps 1 and 2 (not beyond)
     const interval = setInterval(() => {
-      setLoadingStep((s) => (s < STEPS.length - 1 ? s + 1 : s));
-    }, 4000);
+      setLoadingStep((s) => (s < 2 ? s + 1 : s));
+    }, 6000);
     return () => clearInterval(interval);
   }, [loading]);
 
@@ -91,48 +94,57 @@ export function VerifyClient({ plan = "free", planStatus = "inactive", role = "u
     return data.text;
   }
 
-  async function extractFromPdf(): Promise<string> {
-    if (!pdfFile) throw new Error("No PDF file selected");
-    const formData = new FormData();
-    formData.append("file", pdfFile);
-    const res = await fetch("/api/extract-pdf", {
-      method: "POST",
-      body: formData,
-    });
-    if (res.status === 401) {
-      router.push("/login");
-      throw new Error("redirect");
-    }
-    const data = (await res.json()) as { text?: string; error?: string };
-    if (!res.ok || !data.text) {
-      throw new Error(data.error ?? `Failed to extract text from PDF`);
-    }
-    return data.text;
-  }
-
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     setLoading(true);
     setError(null);
     setLoadingStep(0);
     try {
-      let inputText = text;
+      let response: Response;
+      let historySnippet = "";
 
-      if (activeTab === "url") {
-        inputText = await extractFromUrl();
-      } else if (activeTab === "pdf") {
-        inputText = await extractFromPdf();
+      if (activeTab === "pdf") {
+        // Send PDF directly to /api/verify as FormData (single round-trip)
+        if (!pdfFile) throw new Error("No PDF file selected");
+        if (pdfFile.size > 5 * 1024 * 1024) {
+          throw new Error("PDF must be under 5 MB");
+        }
+        const formData = new FormData();
+        formData.append("file", pdfFile);
+        setLoadingStep(0); // "Extracting text" — server handles extraction + verification
+        response = await fetch("/api/verify", {
+          method: "POST",
+          body: formData,
+        });
+        historySnippet = pdfFile.name;
+      } else if (activeTab === "url") {
+        setLoadingStep(0); // "Extracting text" from URL
+        const extractedText = await extractFromUrl();
+        if (!extractedText.trim()) {
+          throw new Error("No text to verify. Please provide some content.");
+        }
+        setLoadingStep(1); // "Analyzing claims" — now sending to verify
+        response = await fetch("/api/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: extractedText }),
+        });
+        historySnippet = url;
+      } else {
+        if (!text.trim()) {
+          throw new Error("No text to verify. Please provide some content.");
+        }
+        setLoadingStep(1); // "Analyzing claims" — text already available
+        response = await fetch("/api/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text }),
+        });
+        historySnippet = text;
       }
 
-      if (!inputText.trim()) {
-        throw new Error("No text to verify. Please provide some content.");
-      }
+      setLoadingStep(3); // "Building report" — response received
 
-      const response = await fetch("/api/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: inputText }),
-      });
       if (response.status === 401) {
         router.push("/login");
         return;
@@ -147,7 +159,7 @@ export function VerifyClient({ plan = "free", planStatus = "inactive", role = "u
       }
       const data = (await response.json()) as { jobId: string; packId?: string };
       const packId = data.packId ?? data.jobId;
-      saveToHistory(packId, inputText);
+      saveToHistory(packId, historySnippet);
       setHistory(loadHistory());
       router.push(`/report/${packId}`);
     } catch (submitError) {
