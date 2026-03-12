@@ -19,8 +19,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid email address." }, { status: 400 });
   }
 
-  // Log for now — replace with actual email sending
-  console.log(`[forgot-password] Reset requested for: ${body.email}`);
+  // Log without PII — replace with actual email sending when email service is integrated
+  console.log(JSON.stringify({ level: "info", event: "forgot_password_requested", timestamp: new Date().toISOString() }));
 
   // Always return success to prevent email enumeration
   return NextResponse.json({ ok: true });
