@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head><title>Generate Extension Icons</title></head>
+<body>
+<p>Open this file in a browser, then right-click each canvas to "Save image as" the corresponding PNG.</p>
+<script>
+const sizes = [16, 48, 128];
+for (const size of sizes) {
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  // Background
+  const r = size * 0.1875;
+  ctx.beginPath();
+  ctx.roundRect(0, 0, size, size, r);
+  ctx.fillStyle = "#0a0e1a";
+  ctx.fill();
+  // Circle
+  ctx.beginPath();
+  ctx.arc(size/2, size/2, size * 0.34375, 0, Math.PI * 2);
+  ctx.strokeStyle = "#06b6d4";
+  ctx.lineWidth = Math.max(1, size * 0.047);
+  ctx.stroke();
+  // Checkmark
+  ctx.beginPath();
+  const s = size / 128;
+  ctx.moveTo(42 * s, 64 * s);
+  ctx.lineTo(58 * s, 80 * s);
+  ctx.lineTo(86 * s, 52 * s);
+  ctx.strokeStyle = "#06b6d4";
+  ctx.lineWidth = Math.max(1, size * 0.047);
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.stroke();
+
+  const label = document.createElement("p");
+  label.textContent = `icon-${size}.png`;
+  document.body.appendChild(label);
+  document.body.appendChild(canvas);
+
+  // Auto-download
+  const link = document.createElement("a");
+  link.download = `icon-${size}.png`;
+  link.href = canvas.toDataURL("image/png");
+  link.textContent = ` Download icon-${size}.png`;
+  label.appendChild(link);
+}
+</script>
+</body>
+</html>

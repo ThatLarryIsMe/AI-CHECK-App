@@ -104,15 +104,51 @@ export default async function ToolsPage() {
           )}
         </section>
 
-        {/* Browser Extension teaser */}
-        <section className="rounded-xl border border-dashed border-slate-700 bg-surface-900/50 p-6 text-center">
-          <h2 className="mb-2 text-lg font-semibold text-white">
-            Chrome Extension — Coming Soon
+        {/* Browser Extension */}
+        <section className="mb-8 rounded-xl border border-surface-800/60 bg-surface-900 p-6">
+          <h2 className="mb-3 text-xl font-semibold text-white">
+            Chrome Extension
+            <span className="ml-2 rounded bg-green-600/20 px-2 py-0.5 text-xs font-bold text-green-400">
+              BETA
+            </span>
           </h2>
-          <p className="text-sm text-slate-400">
+          <p className="mb-4 text-sm text-slate-400">
             Inline fact-checking as you read. Highlights claims directly on the page
-            with verdicts and sources. Sign up to get early access.
+            with color-coded verdicts and evidence sources. Right-click any selected
+            text to verify it instantly.
           </p>
+
+          <div className="rounded-lg bg-surface-800 p-4">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              How to install (developer preview)
+            </p>
+            <ol className="list-decimal space-y-1 pl-5 text-sm text-slate-300">
+              <li>Clone the repo and find <code className="text-brand-400">apps/extension/</code></li>
+              <li>Open <code className="text-brand-400">chrome://extensions</code> and enable Developer Mode</li>
+              <li>Click &quot;Load unpacked&quot; and select the <code className="text-brand-400">apps/extension</code> folder</li>
+              <li>Click the Factward icon and sign in with your account</li>
+              <li>Visit any article and click &quot;Scan this page&quot; or right-click text → &quot;Verify with Factward&quot;</li>
+            </ol>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-4 text-sm text-slate-400">
+            <div className="flex items-center gap-1.5">
+              <span className="inline-block h-2.5 w-2.5 rounded-full bg-green-500"></span>
+              Supported = evidence confirms
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="inline-block h-2.5 w-2.5 rounded-full bg-yellow-500"></span>
+              Mixed = conflicting sources
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="inline-block h-2.5 w-2.5 rounded-full bg-red-500"></span>
+              Unsupported = evidence contradicts
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="inline-block h-2.5 w-2.5 rounded-full bg-slate-500"></span>
+              Insufficient = not enough evidence
+            </div>
+          </div>
         </section>
       </div>
     </main>
