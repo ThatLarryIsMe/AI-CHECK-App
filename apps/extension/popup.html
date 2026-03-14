@@ -20,11 +20,17 @@
     <form id="login-form">
       <input type="email" id="login-email" placeholder="Email" required autocomplete="email" />
       <input type="password" id="login-password" placeholder="Password" required autocomplete="current-password" />
+      <div class="remember-row">
+        <label class="checkbox-label">
+          <input type="checkbox" id="remember-me" checked />
+          <span>Keep me signed in</span>
+        </label>
+      </div>
       <button type="submit" id="login-btn">Sign in</button>
       <p id="login-error" class="error" hidden></p>
     </form>
     <p class="footer-link">
-      No account? <a href="https://factward.ai/signup" target="_blank" rel="noopener">Sign up</a>
+      No account? <a href="https://factward.ai/signup" target="_blank" rel="noopener">Sign up free</a>
     </p>
   </div>
 
@@ -36,24 +42,43 @@
         <path d="M5 8l2 2 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
       </svg>
       <span class="logo-text">Factward</span>
-      <button id="logout-btn" class="btn-ghost" title="Sign out">Sign out</button>
+      <div class="header-status" id="status-badge" title="Extension is active">
+        <span class="status-dot"></span>
+        <span>Active</span>
+      </div>
     </div>
 
     <div id="user-info" class="user-info">
       <span id="user-email"></span>
+      <button id="logout-btn" class="btn-text" title="Sign out">Sign out</button>
     </div>
 
-    <!-- Quick verify -->
-    <div class="section">
-      <label for="verify-text" class="label">Verify text</label>
+    <!-- Quick actions -->
+    <div class="action-grid">
+      <button id="scan-page-btn" class="action-card">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+          <polyline points="14,2 14,8 20,8" />
+          <line x1="16" y1="13" x2="8" y2="13" />
+          <line x1="16" y1="17" x2="8" y2="17" />
+        </svg>
+        <span class="action-label">Scan this page</span>
+        <span class="action-hint">Auto-check claims on the current tab</span>
+      </button>
+      <button id="verify-toggle-btn" class="action-card">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="9,11 12,14 22,4" />
+          <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
+        </svg>
+        <span class="action-label">Paste & verify</span>
+        <span class="action-hint">Check any text you paste in</span>
+      </button>
+    </div>
+
+    <!-- Paste verify panel (hidden by default) -->
+    <div id="verify-panel" class="section" hidden>
       <textarea id="verify-text" rows="4" placeholder="Paste a claim or paragraph to fact-check…"></textarea>
       <button id="verify-btn" class="btn-primary">Verify</button>
-    </div>
-
-    <!-- Page scan -->
-    <div class="section">
-      <button id="scan-page-btn" class="btn-secondary">Scan this page</button>
-      <p class="hint">Highlights claims on the current tab with inline verdicts.</p>
     </div>
 
     <!-- Results -->

@@ -12,6 +12,8 @@ const loginBtn = document.getElementById("login-btn");
 const loginError = document.getElementById("login-error");
 const logoutBtn = document.getElementById("logout-btn");
 const userEmailEl = document.getElementById("user-email");
+const verifyToggleBtn = document.getElementById("verify-toggle-btn");
+const verifyPanel = document.getElementById("verify-panel");
 const verifyText = document.getElementById("verify-text");
 const verifyBtn = document.getElementById("verify-btn");
 const scanPageBtn = document.getElementById("scan-page-btn");
@@ -93,6 +95,15 @@ loginForm.addEventListener("submit", async (e) => {
 logoutBtn.addEventListener("click", async () => {
   await clearSession();
   await initView();
+});
+
+// ── Toggle verify panel ──
+
+verifyToggleBtn.addEventListener("click", () => {
+  verifyPanel.hidden = !verifyPanel.hidden;
+  if (!verifyPanel.hidden) {
+    verifyText.focus();
+  }
 });
 
 // ── Helpers ──
@@ -192,31 +203,39 @@ async function fetchPack(packId) {
   return res.json();
 }
 
+function startLoadingSteps() {
+  const steps = [
+    "Extracting claims…",
+    "Searching for evidence…",
+    "Analyzing sources…",
+    "Building report…",
+  ];
+  let stepIdx = 0;
+  return setInterval(() => {
+    stepIdx++;
+    if (stepIdx < steps.length) {
+      loadingStep.textContent = steps[stepIdx];
+    }
+  }, 3000);
+}
+
+function setActionsDisabled(disabled) {
+  verifyBtn.disabled = disabled;
+  scanPageBtn.disabled = disabled;
+  verifyToggleBtn.disabled = disabled;
+}
+
 // ── Verify text ──
 
 verifyBtn.addEventListener("click", async () => {
   const text = verifyText.value.trim();
   if (!text) return;
 
-  verifyBtn.disabled = true;
-  scanPageBtn.disabled = true;
+  setActionsDisabled(true);
 
   try {
     showLoading("Sending text to Factward…");
-
-    const steps = [
-      "Extracting claims…",
-      "Searching for evidence…",
-      "Analyzing sources…",
-      "Building report…",
-    ];
-    let stepIdx = 0;
-    const stepTimer = setInterval(() => {
-      stepIdx++;
-      if (stepIdx < steps.length) {
-        loadingStep.textContent = steps[stepIdx];
-      }
-    }, 3000);
+    const stepTimer = startLoadingSteps();
 
     const { packId } = await apiVerify({ text });
     clearInterval(stepTimer);
@@ -234,16 +253,14 @@ verifyBtn.addEventListener("click", async () => {
     hideLoading();
     showError(err.message);
   } finally {
-    verifyBtn.disabled = false;
-    scanPageBtn.disabled = false;
+    setActionsDisabled(false);
   }
 });
 
 // ── Scan page ──
 
 scanPageBtn.addEventListener("click", async () => {
-  verifyBtn.disabled = true;
-  scanPageBtn.disabled = true;
+  setActionsDisabled(true);
 
   try {
     showLoading("Extracting page text…");
@@ -269,20 +286,7 @@ scanPageBtn.addEventListener("click", async () => {
     }
 
     showLoading("Verifying claims…");
-
-    const steps = [
-      "Extracting claims…",
-      "Searching for evidence…",
-      "Analyzing sources…",
-      "Building report…",
-    ];
-    let stepIdx = 0;
-    const stepTimer = setInterval(() => {
-      stepIdx++;
-      if (stepIdx < steps.length) {
-        loadingStep.textContent = steps[stepIdx];
-      }
-    }, 3000);
+    const stepTimer = startLoadingSteps();
 
     const { packId } = await apiVerify({ text: pageText });
     clearInterval(stepTimer);
@@ -306,8 +310,7 @@ scanPageBtn.addEventListener("click", async () => {
     hideLoading();
     showError(err.message);
   } finally {
-    verifyBtn.disabled = false;
-    scanPageBtn.disabled = false;
+    setActionsDisabled(false);
   }
 });
 

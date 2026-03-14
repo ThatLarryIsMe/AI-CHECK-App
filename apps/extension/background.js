@@ -2,15 +2,23 @@
 
 const API_BASE = "https://factward.ai";
 
-// ── Context menu: right-click selected text to verify ──
+// ── Open welcome page on first install ──
 
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener((details) => {
+  // Create context menu
   chrome.contextMenus.create({
     id: "factward-verify-selection",
     title: "Verify with Factward",
     contexts: ["selection"],
   });
+
+  // Open welcome/onboarding page on fresh install
+  if (details.reason === "install") {
+    chrome.tabs.create({ url: chrome.runtime.getURL("welcome.html") });
+  }
 });
+
+// ── Context menu: right-click selected text to verify ──
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId !== "factward-verify-selection") return;
