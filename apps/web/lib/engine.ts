@@ -3,7 +3,7 @@ import { extractClaims } from "./claim-extractor";
 import { classifyClaim } from "./classifier";
 import { retrieveEvidence } from "./retrieval";
 
-const ENGINE_VERSION = process.env.ENGINE_VERSION ?? "1.0.0-lite";
+const ENGINE_VERSION = process.env.ENGINE_VERSION ?? "2.0.0-thesis";
 const MAX_INPUT_LENGTH_FREE = 10_000;
 const MAX_INPUT_LENGTH_PRO = 15_000;
 const MAX_CLAIMS_FREE = 5;
@@ -72,30 +72,38 @@ export async function runVerification(
 
     const packId = crypto.randomUUID();
 
-    // Step 1: Extract claims from text
+    // === PHASE 1: Thesis Identification + Sub-Claim Decomposition ===
+    // The AI first identifies the overarching claim, then breaks it into
+    // targeted sub-claims that stress-test the thesis from multiple angles.
     const extractStart = Date.now();
-    const rawClaimTexts = (await extractClaims(text, MAX_CLAIMS)).slice(0, MAX_CLAIMS);
+    const extraction = await extractClaims(text, MAX_CLAIMS);
     llmDurationMs += Date.now() - extractStart;
 
-    // Step 1b: Filter out claims not grounded in the original text (anti-hallucination)
-    const claimTexts = rawClaimTexts.filter((claim) => isClaimGroundedInText(claim, text));
+    const overarchingClaim = extraction.overarchingClaim;
+    const rawExtractedClaims = extraction.claims.slice(0, MAX_CLAIMS);
 
-    if (claimTexts.length === 0 && rawClaimTexts.length > 0) {
-      // All claims were filtered — something went wrong with extraction
-      // Fall back to the raw claims rather than returning empty
-      claimTexts.push(...rawClaimTexts.slice(0, MAX_CLAIMS));
-    }
+    // Anti-hallucination: filter out claims not grounded in the original text
+    const groundedClaims = rawExtractedClaims.filter((claim) =>
+      isClaimGroundedInText(claim.text, text)
+    );
 
-    // Step 2: For each claim, retrieve evidence FIRST, then classify WITH evidence
+    // Fall back to raw claims if all were filtered
+    const extractedClaims =
+      groundedClaims.length === 0 && rawExtractedClaims.length > 0
+        ? rawExtractedClaims
+        : groundedClaims;
+
+    // === PHASE 2: Evidence Retrieval + Classification ===
+    // For each sub-claim, retrieve evidence and classify with granular scoring.
     const claimsWithEvidence = await Promise.all(
-      claimTexts.map(async (claimText) => {
+      extractedClaims.map(async (extractedClaim) => {
         const claimId = crypto.randomUUID();
 
-        // Step 2a: Retrieve evidence first
+        // Step 2a: Retrieve evidence
         let claimEvidence: Awaited<ReturnType<typeof retrieveEvidence>> = [];
         const retrievalStart = Date.now();
         try {
-          claimEvidence = await retrieveEvidence(claimText);
+          claimEvidence = await retrieveEvidence(extractedClaim.text);
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : "retrieval failed";
           console.error(
@@ -109,11 +117,11 @@ export async function runVerification(
         }
         retrievalDurationMs += Date.now() - retrievalStart;
 
-        // Step 2b: Classify WITH the retrieved evidence
+        // Step 2b: Classify with granular scoring
         const classificationStart = Date.now();
         let result: Awaited<ReturnType<typeof classifyClaim>>;
         try {
-          result = await classifyClaim(claimText, claimEvidence);
+          result = await classifyClaim(extractedClaim.text, claimEvidence);
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : "classification failed";
           console.error(
@@ -127,8 +135,11 @@ export async function runVerification(
           result = {
             status: "insufficient" as const,
             confidence: 0,
+            verdictScore: 0,
             llmClassification: "insufficient" as const,
             reasoning: "Classification failed. Defaulted to insufficient evidence.",
+            evidenceBreakdown: { supporting: 0, contradicting: 0, neutral: 0 },
+            sourceStances: [],
           };
         }
         llmDurationMs += Date.now() - classificationStart;
@@ -136,28 +147,63 @@ export async function runVerification(
         return {
           id: claimId,
           packId,
-          text: claimText,
+          text: extractedClaim.text,
           status: result.status,
           confidence: result.confidence,
           reasoning: result.reasoning,
+          verdictScore: result.verdictScore,
+          subClaimRationale: extractedClaim.rationale,
+          evidenceBreakdown: result.evidenceBreakdown,
           evidence: claimEvidence,
+          sourceStances: result.sourceStances,
         };
       })
     );
 
     claimsCount = claimsWithEvidence.length;
 
+    // === PHASE 3: Compute overarching score ===
+    // The overall score is the weighted average of sub-claim verdict scores,
+    // where claims with more evidence get more weight.
+    const scoredClaims = claimsWithEvidence.filter((c) => c.verdictScore > 0 || c.evidence.length > 0);
+    const overarchingScore =
+      scoredClaims.length > 0
+        ? Math.round(
+            scoredClaims.reduce((sum, c) => {
+              const weight = Math.max(1, c.evidence.length);
+              return sum + c.verdictScore * weight;
+            }, 0) /
+              scoredClaims.reduce((sum, c) => sum + Math.max(1, c.evidence.length), 0)
+          )
+        : 0;
+
+    const overarchingVerdict =
+      overarchingScore >= 75
+        ? "The central thesis is well supported by evidence."
+        : overarchingScore >= 50
+          ? "The central thesis has mixed support — some sub-claims hold up, others are questionable."
+          : overarchingScore >= 25
+            ? "The central thesis is poorly supported — most sub-claims lack strong evidence."
+            : scoredClaims.length === 0
+              ? "Insufficient evidence to evaluate the central thesis."
+              : "The central thesis is largely contradicted by available evidence.";
+
+    // Build evidence array with stance annotations
     const flattenedEvidence = claimsWithEvidence.flatMap((claim) =>
-      claim.evidence.map((item) => ({
-        id: crypto.randomUUID(),
-        claimId: claim.id,
-        sourceUrl: item.sourceUrl,
-        snippet: item.quotedSpan,
-        relevanceScore: 1,
-        sourceTitle: item.sourceTitle,
-        quotedSpan: item.quotedSpan,
-        retrievedAt: item.retrievedAt,
-      }))
+      claim.evidence.map((item, idx) => {
+        const stanceEntry = claim.sourceStances.find((s) => s.sourceNumber === idx + 1);
+        return {
+          id: crypto.randomUUID(),
+          claimId: claim.id,
+          sourceUrl: item.sourceUrl,
+          snippet: item.quotedSpan,
+          relevanceScore: 1,
+          sourceTitle: item.sourceTitle,
+          quotedSpan: item.quotedSpan,
+          retrievedAt: item.retrievedAt,
+          stance: stanceEntry?.stance,
+        };
+      })
     );
 
     evidenceCount = flattenedEvidence.length;
@@ -165,10 +211,23 @@ export async function runVerification(
     const pack = {
       id: packId,
       jobId,
-      claims: claimsWithEvidence,
+      claims: claimsWithEvidence.map((c) => ({
+        id: c.id,
+        packId: c.packId,
+        text: c.text,
+        status: c.status,
+        confidence: c.confidence,
+        reasoning: c.reasoning,
+        verdictScore: c.verdictScore,
+        subClaimRationale: c.subClaimRationale,
+        evidenceBreakdown: c.evidenceBreakdown,
+      })),
       evidence: flattenedEvidence,
       createdAt: new Date().toISOString(),
       engineVersion: ENGINE_VERSION,
+      overarchingClaim,
+      overarchingScore,
+      overarchingVerdict,
     };
 
     EvidencePackSchema.parse(pack);

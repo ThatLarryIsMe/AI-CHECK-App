@@ -12,7 +12,10 @@ interface PageProps {
 // Deduplicate the DB query between generateMetadata and the page component
 const getCachedPack = cache((id: string) => getPack(id));
 
-function computeStats(pack: { claims: Array<{ status: string; confidence: number }> }) {
+function computeStats(pack: {
+  claims: Array<{ status: string; confidence: number; verdictScore?: number }>;
+  overarchingScore?: number;
+}) {
   const claims = pack.claims ?? [];
   const total = claims.length;
   const supported = claims.filter((c) => c.status === "supported").length;
@@ -26,17 +29,22 @@ function computeStats(pack: { claims: Array<{ status: string; confidence: number
         )
       : 0;
 
-  // Trust Score: conservative formula based only on verifiable claims.
-  // Only claims with actual evidence count toward the score.
-  // "insufficient" claims are excluded from both numerator AND denominator
-  // so they don't inflate or deflate the score — they're simply unverifiable.
-  const verifiable = supported + mixed + unsupported;
-  const trustScore =
-    verifiable > 0
-      ? Math.round((supported / verifiable) * 100)
-      : 0;
+  // Use the pack-level overarching score if available (new engine 2.0)
+  // Otherwise fall back to the legacy trust score formula
+  let trustScore: number;
+  let overarchingScore: number;
 
-  return { total, supported, mixed, unsupported, insufficient, avgConfidence, trustScore };
+  if (typeof pack.overarchingScore === "number") {
+    overarchingScore = pack.overarchingScore;
+    trustScore = overarchingScore;
+  } else {
+    // Legacy: compute from status counts
+    const verifiable = supported + mixed + unsupported;
+    trustScore = verifiable > 0 ? Math.round((supported / verifiable) * 100) : 0;
+    overarchingScore = trustScore;
+  }
+
+  return { total, supported, mixed, unsupported, insufficient, avgConfidence, trustScore, overarchingScore };
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -45,10 +53,22 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     return { title: "Report Not Found — Factward" };
   }
 
-  const { total, supported, unsupported, trustScore } = computeStats(pack);
+  const { total, overarchingScore } = computeStats(pack);
+  const scoreLabel =
+    overarchingScore >= 80 ? "Verified"
+      : overarchingScore >= 65 ? "Well Supported"
+        : overarchingScore >= 50 ? "Mostly Supported"
+          : overarchingScore >= 35 ? "Mixed"
+            : overarchingScore >= 20 ? "Poorly Supported"
+              : "Refuted";
 
-  const title = `Factward Report — ${trustScore}% Trust Score`;
-  const description = `${total} claims analyzed: ${supported} supported, ${unsupported} unsupported. Verified by Factward AI fact-checking.`;
+  const overarchingClaim = (pack as { overarchingClaim?: string }).overarchingClaim;
+  const thesisSummary = overarchingClaim
+    ? `"${overarchingClaim.slice(0, 80)}${overarchingClaim.length > 80 ? "..." : ""}"`
+    : `${total} claims analyzed`;
+
+  const title = `Factward Report — ${overarchingScore}/100 (${scoreLabel})`;
+  const description = `${thesisSummary} — Score: ${overarchingScore}/100. ${total} sub-claims stress-tested against web evidence by Factward.`;
 
   return {
     title,
