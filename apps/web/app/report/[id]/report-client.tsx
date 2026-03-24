@@ -415,6 +415,9 @@ export function ReportClient({
           <h1 className="text-3xl font-bold text-white">Fact-Check Results</h1>
           <p className="mt-2 text-sm text-slate-500">
             Pack ID: {packId} &middot; Engine: {pack.engineVersion}
+            {pack.createdAt && (
+              <> &middot; Generated: {new Date(pack.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</>
+            )}
           </p>
         </div>
 

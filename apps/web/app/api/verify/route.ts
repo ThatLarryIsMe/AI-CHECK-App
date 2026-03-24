@@ -202,14 +202,27 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Truncate extracted text to engine max (10k chars)
-  if (text.length > 10_000) {
-    text = text.slice(0, 10_000);
-  }
-
   // Rate limiting — anonymous vs authenticated
   let isPro = false;
   const userId = sessionUser?.userId ?? null;
+
+  // Truncate extracted text to engine max (10k chars) with logging
+  let wasTruncated = false;
+  const originalLength = text.length;
+  if (text.length > 10_000) {
+    text = text.slice(0, 10_000);
+    wasTruncated = true;
+    console.warn(
+      JSON.stringify({
+        level: "warn",
+        event: "input_truncated",
+        originalLength,
+        truncatedTo: 10_000,
+        ip,
+        userId,
+      })
+    );
+  }
 
   if (!sessionUser) {
     // Anonymous trial: 1 free check per IP per day
@@ -316,7 +329,13 @@ export async function POST(request: NextRequest) {
       })
     );
 
-    return NextResponse.json({ jobId, packId });
+    return NextResponse.json({
+      jobId,
+      packId,
+      ...(wasTruncated && {
+        warning: `Input was truncated from ${originalLength} to 10,000 characters. Results reflect only the first portion of your text.`,
+      }),
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown verify failure";
     const errorType = (error as { type?: string })?.type ?? "UNKNOWN_ERROR";

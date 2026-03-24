@@ -61,6 +61,15 @@ export async function runVerification(
   const MAX_CLAIMS = isPro ? MAX_CLAIMS_PRO : MAX_CLAIMS_FREE;
 
   try {
+    if (text.trim().length < 50) {
+      throw Object.assign(
+        new Error(
+          "Input is too short for meaningful verification (minimum 50 characters)"
+        ),
+        { type: "INPUT_TOO_SHORT" }
+      );
+    }
+
     if (text.length > MAX_INPUT_LENGTH) {
       throw Object.assign(
         new Error(
@@ -101,10 +110,12 @@ export async function runVerification(
 
         // Step 2a: Retrieve evidence
         let claimEvidence: Awaited<ReturnType<typeof retrieveEvidence>> = [];
+        let retrievalFailed = false;
         const retrievalStart = Date.now();
         try {
           claimEvidence = await retrieveEvidence(extractedClaim.text);
         } catch (err: unknown) {
+          retrievalFailed = true;
           const msg = err instanceof Error ? err.message : "retrieval failed";
           console.error(
             JSON.stringify({
@@ -122,6 +133,13 @@ export async function runVerification(
         let result: Awaited<ReturnType<typeof classifyClaim>>;
         try {
           result = await classifyClaim(extractedClaim.text, claimEvidence);
+          // Enhance reasoning when retrieval failed vs simply no results
+          if (claimEvidence.length === 0 && retrievalFailed) {
+            result = {
+              ...result,
+              reasoning: "Evidence retrieval encountered an error. This claim could not be verified due to a search failure, not because evidence doesn't exist. Consider re-verifying.",
+            };
+          }
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : "classification failed";
           console.error(

@@ -70,6 +70,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const title = `Factward Report — ${overarchingScore}/100 (${scoreLabel})`;
   const description = `${thesisSummary} — Score: ${overarchingScore}/100. ${total} sub-claims stress-tested against web evidence by Factward.`;
 
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://factward.ai";
+  const ogImageUrl = `${baseUrl}/report/${params.id}/opengraph-image`;
+
   return {
     title,
     description,
@@ -78,11 +81,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       description,
       siteName: "Factward",
       type: "article",
+      images: [{ url: ogImageUrl, width: 1200, height: 630, alt: title }],
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
+      images: [ogImageUrl],
     },
   };
 }
@@ -114,5 +119,34 @@ export default async function ReportPage({ params }: PageProps) {
     })),
   };
 
-  return <ReportClient pack={pack} packId={params.id} stats={stats} version={VERSION} decay={decayData} />;
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://factward.ai";
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "ClaimReview",
+    url: `${baseUrl}/report/${params.id}`,
+    claimReviewed: (pack as { overarchingClaim?: string }).overarchingClaim ?? pack.claims[0]?.text ?? "",
+    author: {
+      "@type": "Organization",
+      name: "Factward",
+      url: baseUrl,
+    },
+    datePublished: pack.createdAt,
+    reviewRating: {
+      "@type": "Rating",
+      ratingValue: stats.overarchingScore,
+      bestRating: 100,
+      worstRating: 0,
+      alternateName: stats.overarchingScore >= 80 ? "Verified" : stats.overarchingScore >= 50 ? "Mostly Supported" : stats.overarchingScore >= 30 ? "Mixed" : "Poorly Supported",
+    },
+  };
+
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <ReportClient pack={pack} packId={params.id} stats={stats} version={VERSION} decay={decayData} />
+    </>
+  );
 }

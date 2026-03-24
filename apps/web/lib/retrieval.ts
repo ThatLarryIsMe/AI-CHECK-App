@@ -26,6 +26,11 @@ const BRAVE_SEARCH_URL = "https://api.search.brave.com/res/v1/web/search";
 const BRAVE_TIMEOUT_MS = 8_000;
 const MAX_RESULTS_PER_QUERY = 8;
 const MAX_EVIDENCE_RETURNED = 10;
+const BRAVE_MAX_RETRIES = 1;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 interface BraveWebResult {
   url?: string;
@@ -86,30 +91,48 @@ async function searchBrave(
   apiKey: string,
   count: number
 ): Promise<BraveWebResult[]> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), BRAVE_TIMEOUT_MS);
+  let lastError: Error | null = null;
 
-  try {
-    const url = `${BRAVE_SEARCH_URL}?q=${encodeURIComponent(query)}&count=${count}`;
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-        "X-Subscription-Token": apiKey,
-      },
-      signal: controller.signal,
-      cache: "no-store",
-    });
-
-    if (!response.ok) {
-      throw new Error(`Brave API request failed with status ${response.status}`);
+  for (let attempt = 0; attempt <= BRAVE_MAX_RETRIES; attempt++) {
+    if (attempt > 0) {
+      await sleep(1_000 * attempt);
     }
 
-    const payload = (await response.json()) as BraveSearchResponse;
-    return payload.web?.results ?? [];
-  } finally {
-    clearTimeout(timeout);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), BRAVE_TIMEOUT_MS);
+
+    try {
+      const url = `${BRAVE_SEARCH_URL}?q=${encodeURIComponent(query)}&count=${count}`;
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          "X-Subscription-Token": apiKey,
+        },
+        signal: controller.signal,
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        lastError = new Error(`Brave API request failed with status ${response.status}`);
+        if (response.status >= 500 || response.status === 429) continue;
+        throw lastError;
+      }
+
+      const payload = (await response.json()) as BraveSearchResponse;
+      return payload.web?.results ?? [];
+    } catch (err) {
+      clearTimeout(timeout);
+      if (lastError && !(err instanceof Error && (err.name === "AbortError" || err.message.includes("abort")))) {
+        throw err;
+      }
+      lastError = err instanceof Error ? err : new Error(String(err));
+    } finally {
+      clearTimeout(timeout);
+    }
   }
+
+  throw lastError ?? new Error("Brave search failed after retries");
 }
 
 /**

@@ -155,15 +155,7 @@ export async function classifyClaim(
   claim: string,
   evidence: RetrievedEvidence[] = []
 ): Promise<ClassificationResult> {
-  const evidenceContext = formatEvidenceContext(evidence);
-  const userMessage = `Claim: "${claim}"\n\nEvidence:\n${evidenceContext}`;
-
-  // Classification is the most critical step — use the full gpt-4o model
-  const raw = await callLLM(SYSTEM_PROMPT, userMessage, "gpt-4o");
-  const parsed = ClassificationSchema.parse(raw);
-  const llmClassification = parsed.classification;
-
-  // Hard safety net: if no evidence was provided, FORCE insufficient
+  // Skip LLM call entirely when there's no evidence — saves cost and latency
   if (evidence.length === 0) {
     return {
       status: "insufficient",
@@ -175,6 +167,14 @@ export async function classifyClaim(
       sourceStances: [],
     };
   }
+
+  const evidenceContext = formatEvidenceContext(evidence);
+  const userMessage = `Claim: "${claim}"\n\nEvidence:\n${evidenceContext}`;
+
+  // Classification is the most critical step — use the full gpt-4o model
+  const raw = await callLLM(SYSTEM_PROMPT, userMessage, "gpt-4o");
+  const parsed = ClassificationSchema.parse(raw);
+  const llmClassification = parsed.classification;
 
   // Safety net: reasoning must reference at least one source
   const mentionsSources = /source\s*\d/i.test(parsed.reasoning);
