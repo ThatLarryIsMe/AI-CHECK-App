@@ -126,6 +126,26 @@ const STANCE_TEXT_COLORS: Record<string, string> = {
   neutral: "text-slate-500",
 };
 
+/**
+ * Replace "Source N" references in reasoning text with actual source titles.
+ * E.g., "Source 1 states..." → "The Hill states..."
+ */
+function resolveSourceReferences(
+  reasoning: string,
+  evidence: Array<{ sourceTitle: string }>
+): string {
+  return reasoning.replace(
+    /Source\s+(\d+)/gi,
+    (match, num) => {
+      const idx = parseInt(num, 10) - 1;
+      if (idx >= 0 && idx < evidence.length && evidence[idx].sourceTitle) {
+        return evidence[idx].sourceTitle;
+      }
+      return match; // keep original if no matching source
+    }
+  );
+}
+
 function freshnessBarColor(score: number): string {
   if (score >= 80) return "bg-green-500";
   if (score >= 50) return "bg-yellow-500";
@@ -397,9 +417,11 @@ export function ReportClient({
           : "Expired"
     : "Fresh";
 
-  const isHighScore = overarchingScore >= 80;
+  // Only celebrate if the score is high AND most claims are actually supported
+  const supportedRatio = stats.total > 0 ? stats.supported / stats.total : 0;
+  const isHighScore = overarchingScore >= 80 && supportedRatio >= 0.6;
   const celebrationMessage = isHighScore
-    ? overarchingScore >= 95
+    ? overarchingScore >= 95 && supportedRatio >= 0.8
       ? "Exceptionally well verified. The central thesis holds up strongly."
       : "Strong verification. The evidence supports the central claim."
     : null;
@@ -436,6 +458,23 @@ export function ReportClient({
           </div>
         )}
 
+        {/* Unverifiable claims warning */}
+        {stats.insufficient > 0 && stats.insufficient >= stats.total * 0.5 && (
+          <div className="mb-6 rounded-xl border border-yellow-500/30 bg-yellow-500/5 px-6 py-4 text-center">
+            <div className="flex items-center justify-center gap-3">
+              <span className="text-yellow-400 text-xl shrink-0">&#9888;</span>
+              <div>
+                <p className="text-base font-bold text-yellow-400">
+                  {stats.insufficient} of {stats.total} claims could not be verified
+                </p>
+                <p className="text-sm text-yellow-400/70 mt-1">
+                  No web evidence was found for these claims. The score reflects only the claims that could be checked.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Celebration banner for high score */}
         {celebrationMessage && (
           <div className="trust-shimmer mb-6 rounded-xl border border-green-500/30 bg-green-500/5 px-6 py-4 text-center">
@@ -458,10 +497,10 @@ export function ReportClient({
               <FreshnessGauge freshness={decay.packFreshness} label={freshnessLabel} />
             )}
 
-            <div className="grid grid-cols-2 gap-3 text-center sm:grid-cols-4">
+            <div className="grid grid-cols-3 gap-3 text-center sm:grid-cols-5">
               <div>
                 <p className="text-2xl font-bold text-white">{stats.total}</p>
-                <p className="text-xs text-slate-400">Sub-claims</p>
+                <p className="text-xs text-slate-400">Claims</p>
               </div>
               <div>
                 <p className="text-2xl font-bold text-green-400">{stats.supported}</p>
@@ -472,8 +511,12 @@ export function ReportClient({
                 <p className="text-xs text-slate-400">Refuted</p>
               </div>
               <div>
-                <p className="text-2xl font-bold text-slate-400">{stats.mixed + stats.insufficient}</p>
-                <p className="text-xs text-slate-400">Mixed / Unclear</p>
+                <p className="text-2xl font-bold text-orange-400">{stats.mixed}</p>
+                <p className="text-xs text-slate-400">Conflicting</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-slate-500">{stats.insufficient}</p>
+                <p className="text-xs text-slate-400">Unverifiable</p>
               </div>
             </div>
           </div>
@@ -594,14 +637,22 @@ export function ReportClient({
           {claims.map((claim, i) => {
             const status = claim.classification ?? claim.status;
             const evidence = claim.evidence ?? evidenceByClaimId.get(claim.id) ?? [];
-            const hasScore = typeof claim.verdictScore === "number" && claim.verdictScore > 0;
+            const isInsufficient = status === "insufficient" || (typeof claim.verdictScore === "number" && claim.verdictScore === 0 && evidence.length === 0);
+            const hasScore = typeof claim.verdictScore === "number" && claim.verdictScore > 0 && !isInsufficient;
             const score = hasScore ? claim.verdictScore! : (claim.confidence > 1 ? claim.confidence : Math.round(claim.confidence * 100));
             const claimDecay = decay?.claims?.[i];
 
             // Use new verdict system if available, fall back to legacy
-            const bgClass = hasScore ? verdictBg(score) : (LEGACY_STATUS_BG[status] ?? "bg-slate-900 border-slate-800");
-            const labelText = hasScore ? verdictLabel(score) : (LEGACY_STATUS_LABELS[status] ?? status);
-            const labelColor = hasScore ? verdictTextColor(score) : (LEGACY_STATUS_COLORS[status] ?? "text-slate-400");
+            // Insufficient claims always get the grey treatment regardless of score
+            const bgClass = isInsufficient
+              ? "bg-slate-500/10 border-slate-500/30"
+              : hasScore ? verdictBg(score) : (LEGACY_STATUS_BG[status] ?? "bg-slate-900 border-slate-800");
+            const labelText = isInsufficient
+              ? "Insufficient Evidence"
+              : hasScore ? verdictLabel(score) : (LEGACY_STATUS_LABELS[status] ?? status);
+            const labelColor = isInsufficient
+              ? "text-slate-400"
+              : hasScore ? verdictTextColor(score) : (LEGACY_STATUS_COLORS[status] ?? "text-slate-400");
 
             return (
               <div
@@ -638,9 +689,12 @@ export function ReportClient({
                   {!hasScore && (
                     <span>Confidence: {score}%</span>
                   )}
+                  {hasScore && (
+                    <span>Confidence: {score}%</span>
+                  )}
                   {claimDecay && (
-                    <span className="flex items-center gap-1.5">
-                      <span className="text-slate-600">|</span>
+                    <span className="flex items-center gap-1.5 border-l border-slate-700 pl-4">
+                      <span className="text-xs text-slate-500 uppercase tracking-wide">Freshness:</span>
                       <span className={claimDecay.textColor}>
                         {claimDecay.label}
                       </span>
@@ -661,7 +715,7 @@ export function ReportClient({
                 {claim.reasoning && (
                   <p className="mt-3 text-sm text-slate-400 italic">
                     <span className="not-italic font-medium text-slate-300">Analysis: </span>
-                    {claim.reasoning}
+                    {resolveSourceReferences(claim.reasoning, evidence)}
                   </p>
                 )}
 

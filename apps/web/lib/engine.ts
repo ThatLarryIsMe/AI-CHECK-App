@@ -181,30 +181,47 @@ export async function runVerification(
     claimsCount = claimsWithEvidence.length;
 
     // === PHASE 3: Compute overarching score ===
-    // The overall score is the weighted average of sub-claim verdict scores,
-    // where claims with more evidence get more weight.
-    const scoredClaims = claimsWithEvidence.filter((c) => c.verdictScore > 0 || c.evidence.length > 0);
-    const overarchingScore =
-      scoredClaims.length > 0
-        ? Math.round(
-            scoredClaims.reduce((sum, c) => {
-              const weight = Math.max(1, c.evidence.length);
-              return sum + c.verdictScore * weight;
-            }, 0) /
-              scoredClaims.reduce((sum, c) => sum + Math.max(1, c.evidence.length), 0)
-          )
-        : 0;
+    // ALL claims contribute to the score. Claims with no evidence score 0,
+    // which properly penalizes articles where most claims can't be verified.
+    // The score is a weighted average where claims with more evidence carry
+    // more weight, but unverifiable claims still count (weight = 1).
+    const totalClaims = claimsWithEvidence.length;
+    const verifiableClaims = claimsWithEvidence.filter((c) => c.verdictScore > 0 || c.evidence.length > 0);
+    const unverifiableCount = totalClaims - verifiableClaims.length;
 
+    let overarchingScore: number;
+    if (totalClaims === 0) {
+      overarchingScore = 0;
+    } else {
+      // Weighted average across ALL claims (unverifiable claims contribute 0 with weight 1)
+      const weightedSum = claimsWithEvidence.reduce((sum, c) => {
+        const weight = Math.max(1, c.evidence.length);
+        return sum + c.verdictScore * weight;
+      }, 0);
+      const totalWeight = claimsWithEvidence.reduce((sum, c) => sum + Math.max(1, c.evidence.length), 0);
+      const rawScore = Math.round(weightedSum / totalWeight);
+
+      // Apply a coverage penalty: if most claims are unverifiable, the score
+      // should reflect that we can't actually confirm the article's claims.
+      // coverage = fraction of claims that have any evidence at all.
+      const coverage = verifiableClaims.length / totalClaims;
+      // Scale the raw score by coverage so 4/15 verified caps the score much lower
+      overarchingScore = Math.round(rawScore * coverage);
+    }
+
+    const coverageRatio = totalClaims > 0 ? verifiableClaims.length / totalClaims : 0;
     const overarchingVerdict =
-      overarchingScore >= 75
-        ? "The central thesis is well supported by evidence."
-        : overarchingScore >= 50
-          ? "The central thesis has mixed support — some sub-claims hold up, others are questionable."
-          : overarchingScore >= 25
-            ? "The central thesis is poorly supported — most sub-claims lack strong evidence."
-            : scoredClaims.length === 0
-              ? "Insufficient evidence to evaluate the central thesis."
-              : "The central thesis is largely contradicted by available evidence.";
+      coverageRatio < 0.3
+        ? "Insufficient evidence — most claims could not be verified against web sources."
+        : coverageRatio < 0.5
+          ? "Limited verification — fewer than half the claims have supporting evidence."
+          : overarchingScore >= 75
+            ? "The central thesis is well supported by evidence."
+            : overarchingScore >= 50
+              ? "The central thesis has mixed support — some sub-claims hold up, others are questionable."
+              : overarchingScore >= 25
+                ? "The central thesis is poorly supported — most sub-claims lack strong evidence."
+                : "The central thesis is largely contradicted by available evidence.";
 
     // Build evidence array with stance annotations
     const flattenedEvidence = claimsWithEvidence.flatMap((claim) =>
