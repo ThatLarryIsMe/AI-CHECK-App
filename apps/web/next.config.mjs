@@ -4,7 +4,7 @@ const nextConfig = {
   transpilePackages: ["@factward/core"],
   // Externalize packages that must run as native Node.js modules (not webpack-bundled)
   experimental: {
-    serverComponentsExternalPackages: ["pdf-parse", "pdfjs-dist", "jsdom", "@mozilla/readability"],
+    serverComponentsExternalPackages: ["pdf-parse", "pdfjs-dist", "jsdom", "@mozilla/readability", "pg", "pgpass"],
   },
   webpack: (config, { isServer }) => {
     if (isServer) {
