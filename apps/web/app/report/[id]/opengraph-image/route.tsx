@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 import { getPack } from "@/lib/jobs-db";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 
 function verdictColor(score: number): string {
   if (score >= 80) return "#22c55e";
