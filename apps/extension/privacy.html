@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Factward — Privacy Policy</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #0a0e1a;
+      color: #e2e8f0;
+      line-height: 1.7;
+      padding: 48px 24px;
+      max-width: 640px;
+      margin: 0 auto;
+    }
+    h1 { font-size: 24px; color: #fff; margin-bottom: 8px; }
+    .updated { font-size: 13px; color: #64748b; margin-bottom: 32px; }
+    h2 { font-size: 16px; color: #fff; margin: 24px 0 8px; }
+    p, li { font-size: 14px; color: #94a3b8; margin-bottom: 12px; }
+    ul { padding-left: 20px; }
+    a { color: #06b6d4; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <h1>Factward Browser Extension — Privacy Policy</h1>
+  <p class="updated">Last updated: March 2026</p>
+
+  <h2>What this extension does</h2>
+  <p>Factward is a browser extension that lets you fact-check text on any webpage. When you use it, the text you choose to verify is sent to the Factward API for analysis. Results are displayed directly in your browser.</p>
+
+  <h2>Data we collect</h2>
+  <ul>
+    <li><strong>Email and password</strong> — Used solely for authentication when you sign in. Your password is transmitted securely over HTTPS and is never stored in the extension.</li>
+    <li><strong>Session token</strong> — A temporary authentication token stored locally in your browser (via <code>chrome.storage.local</code>) to keep you signed in. This is deleted when you sign out.</li>
+    <li><strong>Text you verify</strong> — When you click "Scan this page," "Verify," or right-click to verify, the selected or extracted text is sent to <code>https://factward.ai/api/verify</code> for processing. We do not store page content beyond what is needed to generate your fact-check report.</li>
+  </ul>
+
+  <h2>Data we do NOT collect</h2>
+  <ul>
+    <li>Browsing history</li>
+    <li>Cookies or tracking data</li>
+    <li>Personal data beyond your email</li>
+    <li>Any data from pages you do not explicitly choose to scan</li>
+  </ul>
+
+  <h2>How data is used</h2>
+  <ul>
+    <li>To authenticate your account</li>
+    <li>To process your fact-check requests</li>
+    <li>To display verification results in your browser</li>
+  </ul>
+  <p>We do not sell, share, or use your data for advertising or any unrelated purpose.</p>
+
+  <h2>Third-party services</h2>
+  <p>The extension communicates only with <code>https://factward.ai</code>. No data is sent to any other third-party service.</p>
+
+  <h2>Permissions explained</h2>
+  <ul>
+    <li><strong>storage</strong> — Store your session token locally so you stay signed in</li>
+    <li><strong>activeTab</strong> — Access the current tab's content when you click "Scan this page"</li>
+    <li><strong>contextMenus</strong> — Add the "Verify with Factward" right-click menu option</li>
+    <li><strong>scripting</strong> — Extract text from the page and highlight verified claims</li>
+    <li><strong>notifications</strong> — Show status notifications for context-menu verifications</li>
+  </ul>
+
+  <h2>Data retention</h2>
+  <p>Your session token is stored locally until you sign out or it expires. Fact-check reports are stored on Factward's servers in association with your account. You can delete your account and data by contacting us.</p>
+
+  <h2>Contact</h2>
+  <p>If you have questions about this privacy policy, contact us at <a href="https://factward.ai">factward.ai</a>.</p>
+</body>
+</html>

@@ -1,17 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { EvidencePack } from "@factward/core";
 
 type ClaimWithEvidence = EvidencePack["claims"][number] & {
   classification?: string;
   reasoning?: string;
+  verdictScore?: number;
+  subClaimRationale?: string;
+  evidenceBreakdown?: {
+    supporting: number;
+    contradicting: number;
+    neutral: number;
+  };
   evidence?: Array<{
     sourceUrl: string;
     sourceTitle: string;
     quotedSpan: string;
     retrievedAt: string;
+    stance?: "supporting" | "contradicting" | "neutral";
   }>;
 };
 
@@ -23,6 +31,7 @@ interface ReportStats {
   insufficient: number;
   avgConfidence: number;
   trustScore: number;
+  overarchingScore: number;
 }
 
 interface ClaimDecayData {
@@ -39,26 +48,103 @@ interface DecayData {
   claims: ClaimDecayData[];
 }
 
-const STATUS_LABELS: Record<string, string> = {
+/* ── Verdict score color system (red → green gradient) ── */
+
+function verdictColor(score: number): string {
+  if (score >= 80) return "#22c55e"; // green-500
+  if (score >= 65) return "#84cc16"; // lime-500
+  if (score >= 50) return "#eab308"; // yellow-500
+  if (score >= 35) return "#f97316"; // orange-500
+  if (score >= 20) return "#ef4444"; // red-500
+  return "#dc2626"; // red-600
+}
+
+function verdictBg(score: number): string {
+  if (score >= 80) return "bg-green-500/10 border-green-500/30";
+  if (score >= 65) return "bg-lime-500/10 border-lime-500/30";
+  if (score >= 50) return "bg-yellow-500/10 border-yellow-500/30";
+  if (score >= 35) return "bg-orange-500/10 border-orange-500/30";
+  if (score >= 20) return "bg-red-500/10 border-red-500/30";
+  return "bg-red-600/10 border-red-600/30";
+}
+
+function verdictLabel(score: number): string {
+  if (score >= 80) return "Verified";
+  if (score >= 65) return "Well Supported";
+  if (score >= 50) return "Mostly Supported";
+  if (score >= 35) return "Mixed Evidence";
+  if (score >= 20) return "Poorly Supported";
+  return "Refuted";
+}
+
+function verdictTextColor(score: number): string {
+  if (score >= 80) return "text-green-400";
+  if (score >= 65) return "text-lime-400";
+  if (score >= 50) return "text-yellow-400";
+  if (score >= 35) return "text-orange-400";
+  if (score >= 20) return "text-red-400";
+  return "text-red-500";
+}
+
+/** Fallback for old packs without verdictScore */
+const LEGACY_STATUS_LABELS: Record<string, string> = {
   supported: "Supported",
   mixed: "Conflicting Sources",
   unsupported: "Unsupported",
   insufficient: "Insufficient Evidence",
 };
 
-const STATUS_COLORS: Record<string, string> = {
+const LEGACY_STATUS_BG: Record<string, string> = {
+  supported: "bg-green-500/10 border-green-500/30",
+  mixed: "bg-orange-500/10 border-orange-500/30",
+  unsupported: "bg-red-500/10 border-red-500/30",
+  insufficient: "bg-slate-500/10 border-slate-500/30",
+};
+
+const LEGACY_STATUS_COLORS: Record<string, string> = {
   supported: "text-green-400",
   mixed: "text-orange-400",
   unsupported: "text-red-400",
   insufficient: "text-slate-400",
 };
 
-const STATUS_BG: Record<string, string> = {
-  supported: "bg-green-500/10 border-green-500/30",
-  mixed: "bg-orange-500/10 border-orange-500/30",
-  unsupported: "bg-red-500/10 border-red-500/30",
-  insufficient: "bg-slate-500/10 border-slate-500/30",
+const STANCE_COLORS: Record<string, string> = {
+  supporting: "border-green-500/40 bg-green-500/5",
+  contradicting: "border-red-500/40 bg-red-500/5",
+  neutral: "border-slate-600/40 bg-slate-800/50",
 };
+
+const STANCE_LABELS: Record<string, string> = {
+  supporting: "Supports claim",
+  contradicting: "Contradicts claim",
+  neutral: "Neutral / tangential",
+};
+
+const STANCE_TEXT_COLORS: Record<string, string> = {
+  supporting: "text-green-400",
+  contradicting: "text-red-400",
+  neutral: "text-slate-500",
+};
+
+/**
+ * Replace "Source N" references in reasoning text with actual source titles.
+ * E.g., "Source 1 states..." → "The Hill states..."
+ */
+function resolveSourceReferences(
+  reasoning: string,
+  evidence: Array<{ sourceTitle: string }>
+): string {
+  return reasoning.replace(
+    /Source\s+(\d+)/gi,
+    (match, num) => {
+      const idx = parseInt(num, 10) - 1;
+      if (idx >= 0 && idx < evidence.length && evidence[idx].sourceTitle) {
+        return evidence[idx].sourceTitle;
+      }
+      return match; // keep original if no matching source
+    }
+  );
+}
 
 function freshnessBarColor(score: number): string {
   if (score >= 80) return "bg-green-500";
@@ -67,11 +153,11 @@ function freshnessBarColor(score: number): string {
   return "bg-red-500";
 }
 
-function TrustScoreGauge({ score }: { score: number }) {
-  const color =
-    score >= 70 ? "#22c55e" : score >= 40 ? "#eab308" : "#ef4444";
-  const label =
-    score >= 70 ? "High Trust" : score >= 40 ? "Mixed" : "Low Trust";
+/* ── Overarching Score Gauge ── */
+
+function OverarchingScoreGauge({ score, verdict }: { score: number; verdict: string }) {
+  const color = verdictColor(score);
+  const label = verdictLabel(score);
 
   const radius = 60;
   const circumference = Math.PI * radius;
@@ -79,7 +165,17 @@ function TrustScoreGauge({ score }: { score: number }) {
 
   return (
     <div className="flex flex-col items-center">
-      <svg width="160" height="100" viewBox="0 0 160 100">
+      <svg width="160" height="100" viewBox="0 0 160 100" role="img" aria-label={`Overall score: ${score}% — ${label}`}>
+        {/* Track background */}
+        <defs>
+          <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#dc2626" />
+            <stop offset="25%" stopColor="#f97316" />
+            <stop offset="50%" stopColor="#eab308" />
+            <stop offset="75%" stopColor="#84cc16" />
+            <stop offset="100%" stopColor="#22c55e" />
+          </linearGradient>
+        </defs>
         <path
           d="M 10 90 A 60 60 0 0 1 150 90"
           fill="none"
@@ -104,12 +200,47 @@ function TrustScoreGauge({ score }: { score: number }) {
           className="fill-white text-3xl font-bold"
           style={{ fontSize: "28px", fontWeight: "bold" }}
         >
-          {score}%
+          {score}
         </text>
       </svg>
-      <p className="mt-1 text-sm font-medium" style={{ color }}>
+      <p className="mt-1 text-sm font-semibold" style={{ color }}>
         {label}
       </p>
+      <p className="mt-0.5 text-xs text-slate-500 text-center max-w-[200px]">{verdict}</p>
+    </div>
+  );
+}
+
+/* ── Mini verdict bar for individual claims ── */
+
+function VerdictBar({ score }: { score: number }) {
+  const color = verdictColor(score);
+  return (
+    <div className="flex items-center gap-2">
+      <div className="h-2 w-24 rounded-full bg-slate-700 overflow-hidden">
+        <div
+          className="h-full rounded-full transition-all duration-700"
+          style={{ width: `${score}%`, backgroundColor: color }}
+        />
+      </div>
+      <span className="text-sm font-bold" style={{ color }}>{score}</span>
+    </div>
+  );
+}
+
+/* ── Evidence breakdown mini chart ── */
+
+function EvidenceBreakdownChart({ breakdown }: { breakdown: { supporting: number; contradicting: number; neutral: number } }) {
+  const total = breakdown.supporting + breakdown.contradicting + breakdown.neutral;
+  if (total === 0) return null;
+
+  return (
+    <div className="flex items-center gap-1.5 text-xs">
+      <span className="text-green-400">{breakdown.supporting} for</span>
+      <span className="text-slate-600">/</span>
+      <span className="text-red-400">{breakdown.contradicting} against</span>
+      <span className="text-slate-600">/</span>
+      <span className="text-slate-400">{breakdown.neutral} neutral</span>
     </div>
   );
 }
@@ -154,6 +285,30 @@ function FreshnessGauge({ freshness, label }: { freshness: number; label: string
   );
 }
 
+/* ── Color legend ── */
+
+function ScoreLegend() {
+  const ranges = [
+    { min: 80, max: 100, label: "Verified", color: "#22c55e" },
+    { min: 65, max: 79, label: "Well Supported", color: "#84cc16" },
+    { min: 50, max: 64, label: "Mostly Supported", color: "#eab308" },
+    { min: 35, max: 49, label: "Mixed", color: "#f97316" },
+    { min: 20, max: 34, label: "Poorly Supported", color: "#ef4444" },
+    { min: 0, max: 19, label: "Refuted", color: "#dc2626" },
+  ];
+
+  return (
+    <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-slate-400">
+      {ranges.map((r) => (
+        <span key={r.label} className="flex items-center gap-1">
+          <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: r.color }} />
+          {r.min}-{r.max} {r.label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export function ReportClient({
   pack,
   packId,
@@ -172,9 +327,43 @@ export function ReportClient({
   const [widgetCopyState, setWidgetCopyState] = useState<"idle" | "copied">("idle");
   const [showEmbed, setShowEmbed] = useState(false);
 
+  // Close embed dialog on Escape key
+  useEffect(() => {
+    if (!showEmbed) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowEmbed(false);
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [showEmbed]);
+
   const reportUrl = typeof window !== "undefined" ? window.location.href : "";
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const claims = pack.claims as ClaimWithEvidence[];
+  const hasVerdictScores = claims.some((c) => typeof c.verdictScore === "number" && c.verdictScore > 0);
+  const overarchingClaim = (pack as { overarchingClaim?: string }).overarchingClaim;
+  const overarchingScore = stats.overarchingScore ?? stats.trustScore;
+  const overarchingVerdict = (pack as { overarchingVerdict?: string }).overarchingVerdict ?? "";
+
+  // Map evidence to claims for display
+  const evidenceByClaimId = new Map<string, Array<{
+    sourceUrl: string;
+    sourceTitle: string;
+    quotedSpan: string;
+    retrievedAt: string;
+    stance?: "supporting" | "contradicting" | "neutral";
+  }>>();
+  for (const ev of pack.evidence) {
+    const list = evidenceByClaimId.get(ev.claimId) ?? [];
+    list.push({
+      sourceUrl: ev.sourceUrl,
+      sourceTitle: ev.sourceTitle ?? ev.sourceUrl,
+      quotedSpan: ev.quotedSpan ?? ev.snippet,
+      retrievedAt: ev.retrievedAt ?? "",
+      stance: (ev as { stance?: "supporting" | "contradicting" | "neutral" }).stance,
+    });
+    evidenceByClaimId.set(ev.claimId, list);
+  }
 
   function handleCopyLink() {
     void navigator.clipboard.writeText(reportUrl).then(() => {
@@ -184,13 +373,26 @@ export function ReportClient({
   }
 
   function handleShareTwitter() {
-    const text = `I just verified ${stats.total} claims with Factward AI — Trust Score: ${stats.trustScore}%\n\n${stats.supported} supported, ${stats.unsupported} unsupported.`;
+    const scoreLabel = verdictLabel(overarchingScore);
+
+    const summary = overarchingClaim
+      ? (overarchingClaim.length > 120 ? overarchingClaim.slice(0, 117) + "..." : overarchingClaim)
+      : claims.slice(0, 2).map((c) => c.text).join(". ").slice(0, 120);
+
+    const text = [
+      `\u{1F50D} "${summary}"`,
+      ``,
+      `Fact-checked ${stats.total} claims — Score: ${overarchingScore}/100 (${scoreLabel})`,
+      ``,
+      `Full report \u2B07\uFE0F`,
+    ].join("\n");
+
     const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(reportUrl)}`;
     window.open(url, "_blank", "noopener,noreferrer");
   }
 
   function handleCopyEmbed() {
-    const embedCode = `<a href="${reportUrl}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:#0f172a;border:1px solid #22d3ee;border-radius:8px;color:#22d3ee;font-family:system-ui;font-size:13px;font-weight:600;text-decoration:none"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="#22d3ee" stroke-width="1.5"/><path d="M5 8l2 2 4-4" stroke="#22d3ee" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Verified by Factward — ${stats.trustScore}% Trust Score</a>`;
+    const embedCode = `<a href="${reportUrl}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:#0f172a;border:1px solid #22d3ee;border-radius:8px;color:#22d3ee;font-family:system-ui;font-size:13px;font-weight:600;text-decoration:none"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="#22d3ee" stroke-width="1.5"/><path d="M5 8l2 2 4-4" stroke="#22d3ee" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Verified by Factward — Score ${overarchingScore}/100</a>`;
     void navigator.clipboard.writeText(embedCode).then(() => {
       setEmbedCopyState("copied");
       setTimeout(() => setEmbedCopyState("idle"), 2000);
@@ -215,11 +417,13 @@ export function ReportClient({
           : "Expired"
     : "Fresh";
 
-  const isHighTrust = stats.trustScore >= 80;
-  const celebrationMessage = isHighTrust
-    ? stats.trustScore === 100
-      ? "Perfect score. Every claim checks out."
-      : "Strong verification. This content holds up."
+  // Only celebrate if the score is high AND most claims are actually supported
+  const supportedRatio = stats.total > 0 ? stats.supported / stats.total : 0;
+  const isHighScore = overarchingScore >= 80 && supportedRatio >= 0.6;
+  const celebrationMessage = isHighScore
+    ? overarchingScore >= 95 && supportedRatio >= 0.8
+      ? "Exceptionally well verified. The central thesis holds up strongly."
+      : "Strong verification. The evidence supports the central claim."
     : null;
 
   return (
@@ -233,10 +437,45 @@ export function ReportClient({
           <h1 className="text-3xl font-bold text-white">Fact-Check Results</h1>
           <p className="mt-2 text-sm text-slate-500">
             Pack ID: {packId} &middot; Engine: {pack.engineVersion}
+            {pack.createdAt && (
+              <> &middot; Generated: {new Date(pack.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</>
+            )}
           </p>
         </div>
 
-        {/* Celebration banner for high trust */}
+        {/* Overarching Claim */}
+        {overarchingClaim && (
+          <div className="mb-6 rounded-xl border border-slate-700 bg-slate-900/80 p-5">
+            <p className="text-xs font-semibold uppercase tracking-widest text-cyan-400 mb-2">
+              Central Thesis Under Investigation
+            </p>
+            <p className="text-lg font-medium text-white leading-relaxed">
+              &ldquo;{overarchingClaim}&rdquo;
+            </p>
+            <p className="mt-2 text-sm text-slate-400">
+              The following sub-claims were identified to stress-test this thesis from multiple angles.
+            </p>
+          </div>
+        )}
+
+        {/* Unverifiable claims warning */}
+        {stats.insufficient > 0 && stats.insufficient >= stats.total * 0.5 && (
+          <div className="mb-6 rounded-xl border border-yellow-500/30 bg-yellow-500/5 px-6 py-4 text-center">
+            <div className="flex items-center justify-center gap-3">
+              <span className="text-yellow-400 text-xl shrink-0">&#9888;</span>
+              <div>
+                <p className="text-base font-bold text-yellow-400">
+                  {stats.insufficient} of {stats.total} claims could not be verified
+                </p>
+                <p className="text-sm text-yellow-400/70 mt-1">
+                  No web evidence was found for these claims. The score reflects only the claims that could be checked.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Celebration banner for high score */}
         {celebrationMessage && (
           <div className="trust-shimmer mb-6 rounded-xl border border-green-500/30 bg-green-500/5 px-6 py-4 text-center">
             <div className="flex items-center justify-center gap-3">
@@ -246,24 +485,19 @@ export function ReportClient({
               </svg>
               <p className="text-lg font-bold text-green-400">{celebrationMessage}</p>
             </div>
-            {stats.trustScore === 100 && (
-              <p className="mt-1 text-sm text-green-400/60">
-                All {stats.total} claims verified as supported with evidence.
-              </p>
-            )}
           </div>
         )}
 
-        {/* Trust Score + Freshness + Stats */}
+        {/* Overall Score + Freshness + Stats */}
         <div className="mb-8 rounded-xl border border-slate-700 bg-slate-900 p-6">
           <div className="flex flex-col items-center gap-6 sm:flex-row sm:justify-around">
-            <TrustScoreGauge score={stats.trustScore} />
+            <OverarchingScoreGauge score={overarchingScore} verdict={overarchingVerdict} />
 
             {decay && (
               <FreshnessGauge freshness={decay.packFreshness} label={freshnessLabel} />
             )}
 
-            <div className="grid grid-cols-2 gap-3 text-center sm:grid-cols-5">
+            <div className="grid grid-cols-3 gap-3 text-center sm:grid-cols-5">
               <div>
                 <p className="text-2xl font-bold text-white">{stats.total}</p>
                 <p className="text-xs text-slate-400">Claims</p>
@@ -281,10 +515,15 @@ export function ReportClient({
                 <p className="text-xs text-slate-400">Conflicting</p>
               </div>
               <div>
-                <p className="text-2xl font-bold text-slate-400">{stats.insufficient}</p>
+                <p className="text-2xl font-bold text-slate-500">{stats.insufficient}</p>
                 <p className="text-xs text-slate-400">Unverifiable</p>
               </div>
             </div>
+          </div>
+
+          {/* Score legend */}
+          <div className="mt-4 pt-4 border-t border-slate-800">
+            <ScoreLegend />
           </div>
 
           {/* Decay warning banner */}
@@ -348,7 +587,7 @@ export function ReportClient({
                       <circle cx="8" cy="8" r="7" stroke="#22d3ee" strokeWidth="1.5" />
                       <path d="M5 8l2 2 4-4" stroke="#22d3ee" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
-                    Verified by Factward — {stats.trustScore}% Trust Score
+                    Verified by Factward — Score {overarchingScore}/100
                   </span>
                 </div>
                 <button
@@ -362,7 +601,7 @@ export function ReportClient({
               {/* Live widget */}
               <div className="border-t border-slate-700 pt-4">
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                  Live widget (JS) — auto-updates with trust score + freshness
+                  Live widget (JS) — auto-updates with score + freshness
                 </p>
                 <div className="mb-3 rounded-lg border border-slate-600 bg-slate-900 p-3">
                   <code className="block text-xs text-slate-300 whitespace-pre-wrap break-all">
@@ -386,33 +625,76 @@ export function ReportClient({
           )}
         </div>
 
-        {/* Claims list */}
+        {/* Sub-claims list */}
+        <div className="mb-4">
+          <h2 className="text-lg font-bold text-white mb-1">Sub-Claim Analysis</h2>
+          <p className="text-sm text-slate-400">
+            Each sub-claim tests a different facet of the central thesis. Evidence is classified as supporting, contradicting, or neutral.
+          </p>
+        </div>
+
         <div className="space-y-4">
           {claims.map((claim, i) => {
             const status = claim.classification ?? claim.status;
-            const evidence = Array.isArray(claim.evidence) ? claim.evidence : [];
-            const confidence =
-              claim.confidence > 1 ? claim.confidence : Math.round(claim.confidence * 100);
+            const evidence = claim.evidence ?? evidenceByClaimId.get(claim.id) ?? [];
+            const isInsufficient = status === "insufficient" || (typeof claim.verdictScore === "number" && claim.verdictScore === 0 && evidence.length === 0);
+            const hasScore = typeof claim.verdictScore === "number" && claim.verdictScore > 0 && !isInsufficient;
+            const score = hasScore ? claim.verdictScore! : (claim.confidence > 1 ? claim.confidence : Math.round(claim.confidence * 100));
             const claimDecay = decay?.claims?.[i];
+
+            // Use new verdict system if available, fall back to legacy
+            // Insufficient claims always get the grey treatment regardless of score
+            const bgClass = isInsufficient
+              ? "bg-slate-500/10 border-slate-500/30"
+              : hasScore ? verdictBg(score) : (LEGACY_STATUS_BG[status] ?? "bg-slate-900 border-slate-800");
+            const labelText = isInsufficient
+              ? "Insufficient Evidence"
+              : hasScore ? verdictLabel(score) : (LEGACY_STATUS_LABELS[status] ?? status);
+            const labelColor = isInsufficient
+              ? "text-slate-400"
+              : hasScore ? verdictTextColor(score) : (LEGACY_STATUS_COLORS[status] ?? "text-slate-400");
 
             return (
               <div
                 key={i}
-                className={`rounded-xl border p-5 ${STATUS_BG[status] ?? "bg-slate-900 border-slate-800"}`}
+                className={`rounded-xl border p-5 ${bgClass}`}
               >
+                {/* Claim header */}
                 <div className="flex items-start justify-between gap-4">
-                  <p className="flex-1 font-medium text-slate-100">{claim.text}</p>
-                  <span
-                    className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide ${STATUS_COLORS[status]}`}
-                  >
-                    {STATUS_LABELS[status] ?? status}
-                  </span>
+                  <div className="flex-1">
+                    <p className="font-medium text-slate-100">{claim.text}</p>
+                    {/* Sub-claim rationale */}
+                    {claim.subClaimRationale && (
+                      <p className="mt-1.5 text-xs text-cyan-400/80 italic">
+                        <span className="not-italic font-semibold text-cyan-400">Why this matters: </span>
+                        {claim.subClaimRationale}
+                      </p>
+                    )}
+                  </div>
+                  <div className="shrink-0 flex flex-col items-end gap-1">
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide ${labelColor}`}
+                    >
+                      {labelText}
+                    </span>
+                    {hasScore && <VerdictBar score={score} />}
+                  </div>
                 </div>
-                <div className="mt-2 flex items-center gap-4 text-sm text-slate-400">
-                  <span>Confidence: {confidence}%</span>
+
+                {/* Evidence breakdown + decay */}
+                <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-slate-400">
+                  {claim.evidenceBreakdown && (
+                    <EvidenceBreakdownChart breakdown={claim.evidenceBreakdown} />
+                  )}
+                  {!hasScore && (
+                    <span>Confidence: {score}%</span>
+                  )}
+                  {hasScore && (
+                    <span>Confidence: {score}%</span>
+                  )}
                   {claimDecay && (
-                    <span className="flex items-center gap-1.5">
-                      <span className="text-slate-600">|</span>
+                    <span className="flex items-center gap-1.5 border-l border-slate-700 pl-4">
+                      <span className="text-xs text-slate-500 uppercase tracking-wide">Freshness:</span>
                       <span className={claimDecay.textColor}>
                         {claimDecay.label}
                       </span>
@@ -431,32 +713,45 @@ export function ReportClient({
 
                 {/* Reasoning */}
                 {claim.reasoning && (
-                  <p className="mt-2 text-sm text-slate-400 italic">
-                    <span className="not-italic font-medium text-slate-500">Reasoning: </span>
-                    {claim.reasoning}
+                  <p className="mt-3 text-sm text-slate-400 italic">
+                    <span className="not-italic font-medium text-slate-300">Analysis: </span>
+                    {resolveSourceReferences(claim.reasoning, evidence)}
                   </p>
                 )}
 
-                {/* Evidence */}
+                {/* Evidence with stance labels */}
                 {evidence.length > 0 && (
                   <div className="mt-3 space-y-2">
-                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Web sources</p>
-                    {evidence.map((item, j) => (
-                      <div key={j} className="rounded-lg border border-slate-700/50 bg-slate-800/50 p-3">
-                        <a
-                          href={item.sourceUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm font-medium text-cyan-400 hover:underline"
-                        >
-                          {item.sourceTitle}
-                        </a>
-                        <p className="mt-1.5 border-l-2 border-slate-600 pl-3 text-sm text-slate-300">
-                          <span className="text-xs text-slate-500">Search snippet: </span>
-                          {item.quotedSpan}
-                        </p>
-                      </div>
-                    ))}
+                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                      Web sources ({evidence.length})
+                    </p>
+                    {evidence.map((item, j) => {
+                      const stance = item.stance ?? "neutral";
+                      const stanceBg = STANCE_COLORS[stance] ?? STANCE_COLORS.neutral;
+                      const stanceLabel = STANCE_LABELS[stance] ?? "Neutral";
+                      const stanceTextColor = STANCE_TEXT_COLORS[stance] ?? "text-slate-500";
+
+                      return (
+                        <div key={j} className={`rounded-lg border p-3 ${stanceBg}`}>
+                          <div className="flex items-center justify-between gap-2 mb-1.5">
+                            <a
+                              href={item.sourceUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm font-medium text-cyan-400 hover:underline truncate"
+                            >
+                              {item.sourceTitle}
+                            </a>
+                            <span className={`shrink-0 text-xs font-semibold uppercase tracking-wide ${stanceTextColor}`}>
+                              {stanceLabel}
+                            </span>
+                          </div>
+                          <p className="border-l-2 border-slate-600 pl-3 text-sm text-slate-300">
+                            {item.quotedSpan}
+                          </p>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
                 {evidence.length === 0 && (
@@ -475,12 +770,19 @@ export function ReportClient({
         <div className="mt-10 rounded-xl border border-slate-800 bg-slate-900/50 p-6 text-sm text-slate-400">
           <h3 className="mb-2 font-semibold text-slate-300">About this report</h3>
           <p>
-            This verification was performed by Factward v{version}. Claims are extracted from
-            input text, then each claim is checked against web evidence retrieved from multiple
-            search queries. Verdicts are based ONLY on retrieved evidence — never on AI knowledge
-            alone. Claims without sufficient evidence are marked &ldquo;Insufficient Evidence&rdquo;
-            rather than guessed. This is an automated tool and is not a substitute for professional
-            fact-checking.
+            This verification was performed by Factward v{version}. The system first identifies the
+            central thesis of the input, then decomposes it into sub-claims that stress-test
+            the thesis from multiple angles (factual foundation, causal logic, source attribution,
+            context, magnitude, and temporal accuracy). Each sub-claim is independently verified
+            against web evidence. Sources are classified as supporting, contradicting, or neutral.
+            Scores range from 0 (refuted) to 100 (verified) based on the balance and quality of evidence.
+          </p>
+          <p className="mt-2">
+            <span className="font-medium text-slate-300">Scoring methodology:</span>{" "}
+            Each sub-claim receives a verdict score (0-100) based on the quality, independence,
+            and balance of supporting vs. contradicting evidence. The overall score is a
+            weighted average where claims with more evidence carry more weight. Verdicts are
+            based ONLY on retrieved evidence — never on AI knowledge alone.
           </p>
           {decay && (
             <p className="mt-2">
@@ -512,8 +814,8 @@ export function ReportClient({
             Don&apos;t publish without checking first.
           </h3>
           <p className="mb-4 text-sm text-slate-400">
-            Factward verifies every claim in your text against real web sources —
-            so you never have to wonder if you got it right.
+            Factward identifies the central thesis and stress-tests it from every angle —
+            so you know exactly where the evidence stands.
           </p>
           <Link
             href="/signup"

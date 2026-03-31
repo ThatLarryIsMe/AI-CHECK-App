@@ -35,6 +35,11 @@ export async function GET(
         )
       : 0;
 
+  // New scoring fields
+  const overarchingClaim = (pack as Record<string, unknown>).overarchingClaim as string | undefined;
+  const overarchingScore = (pack as Record<string, unknown>).overarchingScore as number | undefined;
+  const overarchingVerdict = (pack as Record<string, unknown>).overarchingVerdict as string | undefined;
+
   // Build Markdown evidence pack
   const lines: string[] = [
     `# Factward AI — Evidence Pack`,
@@ -51,31 +56,58 @@ export async function GET(
     ``,
     `---`,
     ``,
+  ];
+
+  // Add overarching claim section if available
+  if (overarchingClaim) {
+    lines.push(
+      `## Central Thesis`,
+      ``,
+      `> ${overarchingClaim}`,
+      ``,
+      `**Overall Score:** ${overarchingScore ?? "N/A"}/100`,
+      `**Verdict:** ${overarchingVerdict ?? "N/A"}`,
+      ``,
+      `---`,
+      ``,
+    );
+  }
+
+  lines.push(
     `## Summary`,
     ``,
     `| Metric | Value |`,
     `|--------|-------|`,
-    `| Total claims | ${total} |`,
-    `| Supported (evidence confirms) | ${supported} |`,
-    `| Conflicting sources | ${mixed} |`,
-    `| Refuted (evidence contradicts) | ${unsupported} |`,
+    `| Total sub-claims | ${total} |`,
+    `| Supported (score >= 60) | ${supported} |`,
+    `| Mixed evidence (score 30-59) | ${mixed} |`,
+    `| Refuted (score < 30) | ${unsupported} |`,
     `| Insufficient evidence | ${insufficient} |`,
     `| Avg confidence | ${avgConfidence}% |`,
     `| Evidence sources | ${evidence.length} |`,
     ``,
     `---`,
     ``,
-    `## Claims`,
+    `## Sub-Claims`,
     ``,
-  ];
+  );
 
   for (const claim of claims) {
+    const claimRecord = claim as Record<string, unknown>;
     lines.push(`### ${claim.text}`);
     lines.push(``);
+    if (claimRecord.subClaimRationale) {
+      lines.push(`- **Why this matters:** ${claimRecord.subClaimRationale}`);
+    }
+    lines.push(`- **Verdict Score:** ${claimRecord.verdictScore ?? "N/A"}/100`);
     lines.push(`- **Classification:** ${claim.status}`);
     lines.push(`- **Confidence:** ${Math.round((claim.confidence ?? 0) * 100)}%`);
-    if ((claim as Record<string, unknown>).reasoning) {
-      lines.push(`- **Reasoning:** ${(claim as Record<string, unknown>).reasoning}`);
+    if (claimRecord.evidenceBreakdown) {
+      const eb = claimRecord.evidenceBreakdown as { supporting: number; contradicting: number; neutral: number };
+      lines.push(`- **Evidence:** ${eb.supporting} supporting, ${eb.contradicting} contradicting, ${eb.neutral} neutral`);
+    }
+    if (claimRecord.reasoning) {
+      lines.push(`- **Analysis:** ${claimRecord.reasoning}`);
     }
     lines.push(``);
     lines.push(`#### Evidence`);

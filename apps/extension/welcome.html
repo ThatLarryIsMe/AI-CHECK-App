@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Welcome to Factward</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #0a0e1a;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .container {
+      max-width: 520px;
+      width: 100%;
+      padding: 48px 32px;
+      text-align: center;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 32px;
+    }
+
+    .logo svg { color: #06b6d4; }
+
+    .logo-text {
+      font-size: 28px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    h1 {
+      font-size: 24px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 12px;
+    }
+
+    .subtitle {
+      font-size: 15px;
+      color: #94a3b8;
+      margin-bottom: 40px;
+      line-height: 1.6;
+    }
+
+    /* Login card */
+    .login-card {
+      background: #111827;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      padding: 28px 24px;
+      margin-bottom: 32px;
+      text-align: left;
+    }
+
+    .login-card h2 {
+      font-size: 16px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 16px;
+    }
+
+    .form-group { margin-bottom: 12px; }
+
+    .form-group label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: #94a3b8;
+      margin-bottom: 4px;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 10px 12px;
+      background: #0a0e1a;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      color: #e2e8f0;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .form-group input:focus { border-color: #06b6d4; }
+
+    .btn-primary {
+      width: 100%;
+      padding: 12px;
+      background: #06b6d4;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #0a0e1a;
+      cursor: pointer;
+      transition: background 0.15s;
+      margin-top: 4px;
+    }
+
+    .btn-primary:hover { background: #22d3ee; }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .error {
+      color: #f87171;
+      font-size: 13px;
+      margin-top: 10px;
+    }
+
+    .signup-link {
+      font-size: 13px;
+      color: #64748b;
+      margin-top: 14px;
+    }
+
+    .signup-link a { color: #06b6d4; text-decoration: none; }
+    .signup-link a:hover { text-decoration: underline; }
+
+    /* Success state */
+    .success-card {
+      background: #111827;
+      border: 1px solid #34d399;
+      border-radius: 12px;
+      padding: 28px 24px;
+      margin-bottom: 32px;
+      display: none;
+    }
+
+    .success-card .check-icon {
+      width: 48px;
+      height: 48px;
+      margin: 0 auto 16px;
+      color: #34d399;
+    }
+
+    .success-card h2 {
+      font-size: 18px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+
+    .success-card p {
+      font-size: 14px;
+      color: #94a3b8;
+      line-height: 1.6;
+    }
+
+    /* How it works */
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .step {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      text-align: left;
+    }
+
+    .step-number {
+      flex-shrink: 0;
+      width: 28px;
+      height: 28px;
+      background: rgba(6, 182, 212, 0.1);
+      border: 1px solid rgba(6, 182, 212, 0.3);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 600;
+      color: #06b6d4;
+    }
+
+    .step-content h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 2px;
+    }
+
+    .step-content p {
+      font-size: 13px;
+      color: #64748b;
+      line-height: 1.5;
+    }
+
+    .pin-hint {
+      background: #111827;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 14px 16px;
+      font-size: 13px;
+      color: #94a3b8;
+      line-height: 1.5;
+    }
+
+    .pin-hint strong { color: #e2e8f0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">
+      <svg width="32" height="32" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5" />
+        <path d="M5 8l2 2 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+      <span class="logo-text">Factward</span>
+    </div>
+
+    <h1>You're all set!</h1>
+    <p class="subtitle">
+      Sign in below and Factward will live in your browser toolbar.
+      Click it anytime to fact-check what you're reading.
+    </p>
+
+    <!-- Login card -->
+    <div class="login-card" id="login-card">
+      <h2>Sign in to activate</h2>
+      <form id="login-form">
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" placeholder="you@example.com" required autocomplete="email" />
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" placeholder="Your password" required autocomplete="current-password" />
+        </div>
+        <button type="submit" class="btn-primary" id="login-btn">Sign in & activate</button>
+        <p id="login-error" class="error" hidden></p>
+      </form>
+      <p class="signup-link">
+        No account yet? <a href="https://factward.ai/signup" target="_blank" rel="noopener">Create one free</a>
+      </p>
+    </div>
+
+    <!-- Success card (shown after login) -->
+    <div class="success-card" id="success-card">
+      <svg class="check-icon" viewBox="0 0 48 48" fill="none">
+        <circle cx="24" cy="24" r="22" stroke="currentColor" stroke-width="2.5" />
+        <path d="M15 24l6 6 12-12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+      <h2>Factward is active!</h2>
+      <p>You're signed in. Close this tab and start using Factward from the toolbar icon on any page.</p>
+    </div>
+
+    <!-- How it works -->
+    <div class="steps">
+      <div class="step">
+        <div class="step-number">1</div>
+        <div class="step-content">
+          <h3>Click the Factward icon</h3>
+          <p>Find it in your browser toolbar (top-right). Click to open the popup.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">2</div>
+        <div class="step-content">
+          <h3>Scan any page or paste text</h3>
+          <p>Hit "Scan this page" to fact-check an article, or paste text to verify.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">3</div>
+        <div class="step-content">
+          <h3>See inline verdicts</h3>
+          <p>Claims are highlighted right on the page with color-coded verdicts and sources.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="pin-hint">
+      <strong>Tip:</strong> Pin Factward to your toolbar for easy access.
+      Click the puzzle-piece icon in Chrome, then click the pin next to Factward.
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = "https://factward.ai";
+    const form = document.getElementById("login-form");
+    const emailInput = document.getElementById("email");
+    const passwordInput = document.getElementById("password");
+    const loginBtn = document.getElementById("login-btn");
+    const loginError = document.getElementById("login-error");
+    const loginCard = document.getElementById("login-card");
+    const successCard = document.getElementById("success-card");
+
+    // Check if already signed in
+    chrome.storage.local.get(["sessionToken"], (data) => {
+      if (data.sessionToken) {
+        loginCard.style.display = "none";
+        successCard.style.display = "block";
+      }
+    });
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      loginError.hidden = true;
+      loginBtn.disabled = true;
+      loginBtn.textContent = "Signing in…";
+
+      try {
+        const res = await fetch(`${API_BASE}/api/auth/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: emailInput.value.trim(),
+            password: passwordInput.value,
+          }),
+        });
+
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.error || `Login failed (${res.status})`);
+        }
+
+        const data = await res.json();
+        if (!data.token) throw new Error("Login succeeded but no token returned.");
+
+        await chrome.storage.local.set({
+          sessionToken: data.token,
+          email: emailInput.value.trim(),
+        });
+
+        // Show success
+        loginCard.style.display = "none";
+        successCard.style.display = "block";
+      } catch (err) {
+        loginError.textContent = err.message;
+        loginError.hidden = false;
+      } finally {
+        loginBtn.disabled = false;
+        loginBtn.textContent = "Sign in & activate";
+      }
+    });
+  </script>
+</body>
+</html>

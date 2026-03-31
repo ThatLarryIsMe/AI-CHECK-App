@@ -118,7 +118,7 @@ export default async function PricingPage() {
             </span>
             <h2 className="mb-1 text-lg font-semibold text-white">Pro</h2>
             <p className="mb-1">
-              <span className="text-3xl font-bold text-white">$15</span>
+              <span className="text-3xl font-bold text-white">$9</span>
               <span className="text-sm text-slate-500 ml-1">/month</span>
             </p>
             <p className="mb-6 text-sm text-slate-400">For professionals who publish</p>

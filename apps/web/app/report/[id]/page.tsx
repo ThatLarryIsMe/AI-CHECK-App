@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cache } from "react";
 import { getPack } from "@/lib/jobs-db";
 import { VERSION } from "@/../../version";
 import { ReportClient } from "./report-client";
@@ -8,7 +9,13 @@ interface PageProps {
   params: { id: string };
 }
 
-function computeStats(pack: { claims: Array<{ status: string; confidence: number }> }) {
+// Deduplicate the DB query between generateMetadata and the page component
+const getCachedPack = cache((id: string) => getPack(id));
+
+function computeStats(pack: {
+  claims: Array<{ status: string; confidence: number; verdictScore?: number }>;
+  overarchingScore?: number;
+}) {
   const claims = pack.claims ?? [];
   const total = claims.length;
   const supported = claims.filter((c) => c.status === "supported").length;
@@ -22,29 +29,49 @@ function computeStats(pack: { claims: Array<{ status: string; confidence: number
         )
       : 0;
 
-  // Trust Score: conservative formula based only on verifiable claims.
-  // Only claims with actual evidence count toward the score.
-  // "insufficient" claims are excluded from both numerator AND denominator
-  // so they don't inflate or deflate the score — they're simply unverifiable.
-  const verifiable = supported + mixed + unsupported;
-  const trustScore =
-    verifiable > 0
-      ? Math.round((supported / verifiable) * 100)
-      : 0;
+  // Use the pack-level overarching score if available (new engine 2.0)
+  // Otherwise fall back to the legacy trust score formula
+  let trustScore: number;
+  let overarchingScore: number;
 
-  return { total, supported, mixed, unsupported, insufficient, avgConfidence, trustScore };
+  if (typeof pack.overarchingScore === "number") {
+    overarchingScore = pack.overarchingScore;
+    trustScore = overarchingScore;
+  } else {
+    // Legacy: compute from status counts
+    const verifiable = supported + mixed + unsupported;
+    trustScore = verifiable > 0 ? Math.round((supported / verifiable) * 100) : 0;
+    overarchingScore = trustScore;
+  }
+
+  return { total, supported, mixed, unsupported, insufficient, avgConfidence, trustScore, overarchingScore };
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const pack = await getPack(params.id);
+  const pack = await getCachedPack(params.id);
   if (!pack) {
     return { title: "Report Not Found — Factward" };
   }
 
-  const { total, supported, unsupported, trustScore } = computeStats(pack);
+  const { total, overarchingScore } = computeStats(pack);
+  const scoreLabel =
+    overarchingScore >= 80 ? "Verified"
+      : overarchingScore >= 65 ? "Well Supported"
+        : overarchingScore >= 50 ? "Mostly Supported"
+          : overarchingScore >= 35 ? "Mixed"
+            : overarchingScore >= 20 ? "Poorly Supported"
+              : "Refuted";
 
-  const title = `Factward Report — ${trustScore}% Trust Score`;
-  const description = `${total} claims analyzed: ${supported} supported, ${unsupported} unsupported. Verified by Factward AI fact-checking.`;
+  const overarchingClaim = (pack as { overarchingClaim?: string }).overarchingClaim;
+  const thesisSummary = overarchingClaim
+    ? `"${overarchingClaim.slice(0, 80)}${overarchingClaim.length > 80 ? "..." : ""}"`
+    : `${total} claims analyzed`;
+
+  const title = `Factward Report — ${overarchingScore}/100 (${scoreLabel})`;
+  const description = `${thesisSummary} — Score: ${overarchingScore}/100. ${total} sub-claims stress-tested against web evidence by Factward.`;
+
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://factward.ai";
+  const ogImageUrl = `${baseUrl}/report/${params.id}/opengraph-image`;
 
   return {
     title,
@@ -54,18 +81,20 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       description,
       siteName: "Factward",
       type: "article",
+      images: [{ url: ogImageUrl, width: 1200, height: 630, alt: title }],
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
+      images: [ogImageUrl],
     },
   };
 }
 
 export default async function ReportPage({ params }: PageProps) {
   // Server-side fetch for instant load + SEO
-  const pack = await getPack(params.id);
+  const pack = await getCachedPack(params.id);
 
   if (!pack) {
     return (
@@ -90,5 +119,34 @@ export default async function ReportPage({ params }: PageProps) {
     })),
   };
 
-  return <ReportClient pack={pack} packId={params.id} stats={stats} version={VERSION} decay={decayData} />;
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://factward.ai";
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "ClaimReview",
+    url: `${baseUrl}/report/${params.id}`,
+    claimReviewed: (pack as { overarchingClaim?: string }).overarchingClaim ?? pack.claims[0]?.text ?? "",
+    author: {
+      "@type": "Organization",
+      name: "Factward",
+      url: baseUrl,
+    },
+    datePublished: pack.createdAt,
+    reviewRating: {
+      "@type": "Rating",
+      ratingValue: stats.overarchingScore,
+      bestRating: 100,
+      worstRating: 0,
+      alternateName: stats.overarchingScore >= 80 ? "Verified" : stats.overarchingScore >= 50 ? "Mostly Supported" : stats.overarchingScore >= 30 ? "Mixed" : "Poorly Supported",
+    },
+  };
+
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <ReportClient pack={pack} packId={params.id} stats={stats} version={VERSION} decay={decayData} />
+    </>
+  );
 }

@@ -7,10 +7,30 @@ export interface RetrievedEvidence {
   retrievedAt: string;
 }
 
+/** Strip HTML tags and decode common HTML entities from Brave Search API results */
+function stripHtml(raw: string): string {
+  return raw
+    .replace(/<[^>]+>/g, "")
+    .replace(/&#x27;/g, "'")
+    .replace(/&#x2F;/g, "/")
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+    .trim();
+}
+
 const BRAVE_SEARCH_URL = "https://api.search.brave.com/res/v1/web/search";
 const BRAVE_TIMEOUT_MS = 8_000;
-const MAX_RESULTS_PER_QUERY = 5;
-const MAX_EVIDENCE_RETURNED = 5;
+const MAX_RESULTS_PER_QUERY = 8;
+const MAX_EVIDENCE_RETURNED = 10;
+const BRAVE_MAX_RETRIES = 1;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 interface BraveWebResult {
   url?: string;
@@ -25,26 +45,39 @@ interface BraveSearchResponse {
 }
 
 /**
- * Generates optimized search queries from a factual claim.
- * A verbatim claim like "The GDP of France was $2.78 trillion in 2023"
- * makes a poor search query. This reformulates it into targeted queries.
+ * Generates research-grade search queries from a factual claim.
+ *
+ * Unlike a simple keyword search, this generates queries that a doctoral
+ * researcher would use: targeting primary sources, peer-reviewed literature,
+ * government databases, and authoritative institutional records.
  */
 async function generateSearchQueries(claim: string): Promise<string[]> {
   try {
     const raw = await callLLM(
-      `You generate concise web search queries to fact-check a claim. Return 2 different search queries that would help verify or refute the claim. Each query should target a different angle or source type (e.g., official statistics, news reports, academic sources).
+      `You are a doctoral-level research methodologist generating search queries to rigorously verify a factual claim. Your queries must target the highest-quality evidence available.
+
+Generate 4 search queries, each targeting a DIFFERENT evidence tier:
+
+1. **Primary/Official source**: Target government databases, official reports, peer-reviewed journals, court records, legislative texts, or the original institution that would hold authoritative data (e.g., "WHO global tuberculosis report 2023", "SEC 10-K filing Tesla 2024").
+
+2. **Scholarly/Expert analysis**: Target academic analysis, expert commentary, or reputable research institutions (e.g., "Brookings Institution analysis GDP growth", "Nature study climate change 2024").
+
+3. **Quality journalism/Investigative**: Target established news organizations known for fact-checking and investigative reporting (e.g., "Reuters fact check claim", "AP News investigation").
+
+4. **Counter-evidence/Alternative perspective**: Actively seek sources that might CONTRADICT the claim — this prevents confirmation bias (e.g., "criticism of [claim subject]", "debunked [claim topic]").
 
 Rules:
-- Queries should be 3-8 words, like what a researcher would type into Google
-- Include key entities, numbers, and dates from the claim
-- Do NOT just repeat the claim verbatim
-- Return ONLY valid JSON: {"queries": ["query 1", "query 2"]}`,
+- Each query should be 4-12 words — specific enough to find relevant results
+- Include specific entities, dates, numbers, and proper nouns from the claim
+- NEVER repeat the claim verbatim as a query
+- Prefer queries that would surface primary data over secondary commentary
+- Return ONLY valid JSON: {"queries": ["query 1", "query 2", "query 3", "query 4"]}`,
       `Fact-check this claim: "${claim}"`
     );
 
     const parsed = raw as { queries?: string[] };
     if (Array.isArray(parsed?.queries) && parsed.queries.length > 0) {
-      return parsed.queries.slice(0, 2);
+      return parsed.queries.slice(0, 4);
     }
   } catch {
     // Fall back to verbatim claim
@@ -58,30 +91,48 @@ async function searchBrave(
   apiKey: string,
   count: number
 ): Promise<BraveWebResult[]> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), BRAVE_TIMEOUT_MS);
+  let lastError: Error | null = null;
 
-  try {
-    const url = `${BRAVE_SEARCH_URL}?q=${encodeURIComponent(query)}&count=${count}`;
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-        "X-Subscription-Token": apiKey,
-      },
-      signal: controller.signal,
-      cache: "no-store",
-    });
-
-    if (!response.ok) {
-      throw new Error(`Brave API request failed with status ${response.status}`);
+  for (let attempt = 0; attempt <= BRAVE_MAX_RETRIES; attempt++) {
+    if (attempt > 0) {
+      await sleep(1_000 * attempt);
     }
 
-    const payload = (await response.json()) as BraveSearchResponse;
-    return payload.web?.results ?? [];
-  } finally {
-    clearTimeout(timeout);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), BRAVE_TIMEOUT_MS);
+
+    try {
+      const url = `${BRAVE_SEARCH_URL}?q=${encodeURIComponent(query)}&count=${count}`;
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          "X-Subscription-Token": apiKey,
+        },
+        signal: controller.signal,
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        lastError = new Error(`Brave API request failed with status ${response.status}`);
+        if (response.status >= 500 || response.status === 429) continue;
+        throw lastError;
+      }
+
+      const payload = (await response.json()) as BraveSearchResponse;
+      return payload.web?.results ?? [];
+    } catch (err) {
+      clearTimeout(timeout);
+      if (lastError && !(err instanceof Error && (err.name === "AbortError" || err.message.includes("abort")))) {
+        throw err;
+      }
+      lastError = err instanceof Error ? err : new Error(String(err));
+    } finally {
+      clearTimeout(timeout);
+    }
   }
+
+  throw lastError ?? new Error("Brave search failed after retries");
 }
 
 /**
@@ -105,7 +156,7 @@ export async function retrieveEvidence(
   }
 
   try {
-    // Generate optimized search queries
+    // Generate research-grade search queries across multiple evidence tiers
     const queries = await generateSearchQueries(claim);
 
     // Run all queries in parallel
@@ -124,9 +175,10 @@ export async function retrieveEvidence(
       .slice(0, MAX_EVIDENCE_RETURNED)
       .map((item) => ({
         sourceUrl: item.url,
-        sourceTitle: item.title?.trim() || item.url,
-        quotedSpan:
-          item.description?.trim() || "No snippet provided by search engine.",
+        sourceTitle: item.title ? stripHtml(item.title) : item.url,
+        quotedSpan: item.description
+          ? stripHtml(item.description)
+          : "No snippet provided by search engine.",
         retrievedAt,
       }));
   } catch (error) {

@@ -1,8 +1,10 @@
 const MAX_PDF_BYTES = 10_000_000; // 10 MB
 
 /**
- * Extract text from a PDF buffer using pdf-parse.
- * The webpack config stubs `canvas` to false to prevent DOMMatrix errors.
+ * Extract text from a PDF buffer using pdf-parse v1.1.1.
+ *
+ * We import from "pdf-parse/lib/pdf-parse" to bypass the debug/test
+ * code in the package's index.js that tries to read a local test file.
  */
 export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
   if (buffer.length > MAX_PDF_BYTES) {
@@ -13,7 +15,7 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const pdfParse = require("pdf-parse") as (
+  const pdfParse = require("pdf-parse/lib/pdf-parse") as (
     buf: Buffer,
     options?: Record<string, unknown>
   ) => Promise<{ text: string; numpages: number }>;

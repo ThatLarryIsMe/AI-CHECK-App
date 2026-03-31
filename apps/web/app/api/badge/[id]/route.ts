@@ -31,12 +31,15 @@ export async function GET(
   const mixed = claims.filter((c) => c.status === "mixed").length;
   const unsupported = claims.filter((c) => c.status === "unsupported").length;
   const insufficient = claims.filter((c) => c.status === "insufficient").length;
-  // Trust score based only on verifiable claims (exclude insufficient)
-  const verifiable = supported + mixed + unsupported;
-  const trustScore =
-    verifiable > 0
-      ? Math.round((supported / verifiable) * 100)
-      : 0;
+  // Use pack-level overarching score if available (engine 2.0+), else legacy formula
+  const packOverarchingScore = (pack as { overarchingScore?: number }).overarchingScore;
+  let trustScore: number;
+  if (typeof packOverarchingScore === "number") {
+    trustScore = packOverarchingScore;
+  } else {
+    const verifiable = supported + mixed + unsupported;
+    trustScore = verifiable > 0 ? Math.round((supported / verifiable) * 100) : 0;
+  }
 
   // Decay analysis
   const decay = analyzePackDecay(claims, pack.createdAt);
@@ -126,7 +129,7 @@ function renderBadgeSvg(
   <line x1="100" y1="6" x2="100" y2="26" stroke="#475569" stroke-width="1"/>
   <!-- Score -->
   <text x="110" y="20" font-family="system-ui,sans-serif" font-size="11" font-weight="700" fill="${tc}">
-    ${trustScore}% Trust
+    ${trustScore}/100
   </text>
   <!-- Divider -->
   <line x1="185" y1="6" x2="185" y2="26" stroke="#475569" stroke-width="1"/>

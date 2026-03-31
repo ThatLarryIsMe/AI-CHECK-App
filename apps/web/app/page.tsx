@@ -1,20 +1,26 @@
 import Link from "next/link";
+import { unstable_cache } from "next/cache";
 import { pool } from "@/lib/db";
 
-async function getGlobalStats(): Promise<{ totalClaims: number; totalPacks: number }> {
-  try {
-    const [claimsResult, packsResult] = await Promise.all([
-      pool.query<{ count: string }>(`SELECT COUNT(*) AS count FROM claims`),
-      pool.query<{ count: string }>(`SELECT COUNT(*) AS count FROM packs`),
-    ]);
-    return {
-      totalClaims: parseInt(claimsResult.rows[0]?.count ?? "0", 10),
-      totalPacks: parseInt(packsResult.rows[0]?.count ?? "0", 10),
-    };
-  } catch {
-    return { totalClaims: 0, totalPacks: 0 };
-  }
-}
+// Cache stats for 5 minutes — avoids COUNT(*) on every page load
+const getGlobalStats = unstable_cache(
+  async (): Promise<{ totalClaims: number; totalPacks: number }> => {
+    try {
+      const [claimsResult, packsResult] = await Promise.all([
+        pool.query<{ count: string }>(`SELECT COUNT(*) AS count FROM claims`),
+        pool.query<{ count: string }>(`SELECT COUNT(*) AS count FROM packs`),
+      ]);
+      return {
+        totalClaims: parseInt(claimsResult.rows[0]?.count ?? "0", 10),
+        totalPacks: parseInt(packsResult.rows[0]?.count ?? "0", 10),
+      };
+    } catch {
+      return { totalClaims: 0, totalPacks: 0 };
+    }
+  },
+  ["global-stats"],
+  { revalidate: 300 }
+);
 
 function formatNumber(n: number): string {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";

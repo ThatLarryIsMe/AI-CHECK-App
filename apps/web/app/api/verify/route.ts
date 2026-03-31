@@ -51,15 +51,26 @@ async function atomicUserRateLimit(
     const since = new Date();
     since.setUTCHours(since.getUTCHours() - 24);
 
-    // Fetch plan, role, and invite bonus info for this user
-    const planResult = await pool.query<{ plan: string; plan_status: string; role: string; invite_checks_remaining: number }>(
-          `SELECT plan, plan_status, role, invite_checks_remaining FROM users WHERE id = $1`,
+    // Fetch plan and role info for this user
+    const planResult = await pool.query<{ plan: string; plan_status: string; role: string }>(
+          `SELECT plan, plan_status, role FROM users WHERE id = $1`,
           [userId]
         );
     const plan = planResult.rows[0]?.plan ?? "free";
     const planStatus = planResult.rows[0]?.plan_status ?? "inactive";
     const role = planResult.rows[0]?.role ?? "user";
-    const inviteChecks = planResult.rows[0]?.invite_checks_remaining ?? 0;
+
+    // Fetch invite bonus checks separately (column may not exist yet)
+    let inviteChecks = 0;
+    try {
+      const inviteResult = await pool.query<{ invite_checks_remaining: number }>(
+        `SELECT invite_checks_remaining FROM users WHERE id = $1`,
+        [userId]
+      );
+      inviteChecks = inviteResult.rows[0]?.invite_checks_remaining ?? 0;
+    } catch {
+      // Column doesn't exist yet — skip bonus checks
+    }
     const isPro = planStatus === "active" && plan === "pro";
     const isAdmin = role === "admin";
 
@@ -191,14 +202,27 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Truncate extracted text to engine max (10k chars)
-  if (text.length > 10_000) {
-    text = text.slice(0, 10_000);
-  }
-
   // Rate limiting — anonymous vs authenticated
   let isPro = false;
   const userId = sessionUser?.userId ?? null;
+
+  // Truncate extracted text to engine max (10k chars) with logging
+  let wasTruncated = false;
+  const originalLength = text.length;
+  if (text.length > 10_000) {
+    text = text.slice(0, 10_000);
+    wasTruncated = true;
+    console.warn(
+      JSON.stringify({
+        level: "warn",
+        event: "input_truncated",
+        originalLength,
+        truncatedTo: 10_000,
+        ip,
+        userId,
+      })
+    );
+  }
 
   if (!sessionUser) {
     // Anonymous trial: 1 free check per IP per day
@@ -305,7 +329,13 @@ export async function POST(request: NextRequest) {
       })
     );
 
-    return NextResponse.json({ jobId, packId });
+    return NextResponse.json({
+      jobId,
+      packId,
+      ...(wasTruncated && {
+        warning: `Input was truncated from ${originalLength} to 10,000 characters. Results reflect only the first portion of your text.`,
+      }),
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown verify failure";
     const errorType = (error as { type?: string })?.type ?? "UNKNOWN_ERROR";

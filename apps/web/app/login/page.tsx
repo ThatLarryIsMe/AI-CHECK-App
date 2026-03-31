@@ -26,7 +26,8 @@ export default function LoginPage() {
         setError(data.error ?? "Login failed");
         return;
       }
-      router.push("/verify");
+      // Full page reload so the server layout re-reads the session cookie
+      window.location.href = "/verify";
     } catch {
       setError("Network error. Please try again.");
     } finally {
@@ -92,6 +93,11 @@ export default function LoginPage() {
                     </svg>
                   )}
                 </button>
+              </div>
+              <div className="mt-1.5 text-right">
+                <Link href="/forgot-password" className="text-xs text-slate-500 hover:text-brand-400 transition">
+                  Forgot password?
+                </Link>
               </div>
             </div>
             {error && (

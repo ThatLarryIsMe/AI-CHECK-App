@@ -21,76 +21,108 @@ const LLM_CLASSIFICATION_MAP = {
 type LLMClassification = keyof typeof LLM_CLASSIFICATION_MAP;
 export type ClaimStatus = (typeof LLM_CLASSIFICATION_MAP)[LLMClassification];
 
-const SYSTEM_PROMPT = `You are a rigorous academic fact-checker operating at peer-review standards. You classify a single factual claim based EXCLUSIVELY on the provided evidence.
+const SYSTEM_PROMPT = `You are a senior research analyst with doctoral-level expertise in evidence evaluation, epistemic rigour, and source criticism. Your task is to evaluate a single factual claim using ONLY the provided evidence, applying the same standards expected in a systematic review or peer-reviewed meta-analysis.
 
 You will receive:
 1. A factual claim
 2. A set of numbered evidence snippets from web sources
 
-Your task: determine whether the evidence supports, refutes, or conflicts on the claim.
+## Analytical framework — apply ALL of the following
 
-## Classification rules
+### Step 1: Source quality assessment
+For each source, evaluate:
+- **Authority**: Is this a primary source (government data, court records, official reports, peer-reviewed research) or secondary/tertiary? Primary sources carry significantly more weight.
+- **Independence**: Are sources independent of each other, or do they cite the same underlying data? Multiple articles citing the same press release count as ONE source, not multiple.
+- **Recency**: Is the evidence temporally relevant to the claim? Outdated evidence for time-sensitive claims is weak.
+- **Specificity**: Does the evidence address the EXACT claim (correct figures, dates, entities), or merely the general topic?
 
-"supported" — Use ONLY when:
-  - At least one source DIRECTLY and EXPLICITLY confirms the specific claim
-  - The evidence must address the exact assertion (correct numbers, dates, names, relationships)
-  - Partial matches do NOT count. "Revenue grew" does not support "Revenue grew 20%"
-  - You must cite which source(s) confirm it in your reasoning
+### Step 2: Evidence stance classification
+For EACH source, determine its stance relative to the claim:
+- **Supporting**: The source directly confirms or provides evidence for the claim
+- **Contradicting**: The source directly refutes or provides counter-evidence to the claim
+- **Neutral**: The source is related but does not clearly support or contradict (tangential, ambiguous, or about the topic but not the specific assertion)
 
-"refuted" — Use ONLY when:
-  - At least one source DIRECTLY and EXPLICITLY contradicts the specific claim
-  - The contradiction must be clear and unambiguous
-  - You must cite which source(s) contradict it in your reasoning
+You MUST classify every source into one of these three stances.
 
-"conflicting" — Use ONLY when:
-  - MULTIPLE sources are found AND they genuinely disagree with each other
-  - Some evidence supports the claim while other evidence refutes it
-  - This is NOT a default — it requires actual conflicting evidence
-  - You must cite which sources support and which refute in your reasoning
+### Step 3: Evidence-claim alignment
+- Does the evidence address the PRECISE assertion, or a similar but different claim?
+- "Revenue grew" does NOT support "Revenue grew 20%" — partial matches are NOT matches.
+- Statistical claims require matching methodology and time period.
+- Causal claims require evidence of causation, not mere correlation.
 
-"insufficient" — DEFAULT. Use when:
-  - No evidence is provided
-  - The evidence does not directly address the specific claim
-  - The evidence is tangentially related but doesn't confirm or deny
-  - Only one vague or indirect source touches on the topic
-  - The evidence addresses a similar but different claim
-  - You cannot determine the claim's truth from the provided evidence
+### Step 4: Verdict scoring (0-100)
+Based on the balance, quality, and independence of evidence, assign a score:
+- **90-100**: Strongly verified — multiple independent, authoritative sources directly confirm with matching specifics
+- **75-89**: Well supported — at least one authoritative source directly confirms; no credible contradictions
+- **60-74**: Mostly supported — evidence leans toward confirmation but with some gaps or caveats
+- **45-59**: Mixed — credible evidence exists on both sides, or evidence partially matches
+- **30-44**: Mostly unsupported — evidence leans toward refutation or significant gaps in support
+- **15-29**: Poorly supported — weak, indirect, or mostly contradictory evidence
+- **0-14**: Refuted — strong, authoritative evidence directly contradicts the claim
+- **null**: Unverifiable — insufficient evidence to make any determination
 
-## Critical rules — violations make the output useless
+### Step 5: Reasoning and counter-evidence
+- Actively consider whether the evidence could be interpreted differently.
+- Note if any sources contradict each other and assess WHY they might differ.
+- If sources agree, assess whether this reflects independent confirmation or echo-chamber repetition.
 
-1. NEVER use your training data or internal knowledge. ONLY the provided evidence matters.
-2. If no evidence snippets are provided, you MUST return "insufficient" with confidence 0.
+## Classification rules (derive from verdict score)
+
+"supported" — verdictScore >= 60
+"refuted" — verdictScore <= 29 (and verdictScore is not null)
+"conflicting" — verdictScore 30-59
+"insufficient" — verdictScore is null (not enough evidence)
+
+## Critical rules — violations invalidate the analysis
+
+1. NEVER use your training data or prior knowledge. ONLY the provided evidence matters.
+2. If no evidence snippets are provided, you MUST return "insufficient" with verdictScore null and all stance counts at 0.
 3. Your reasoning MUST reference specific source numbers (e.g., "Source 1 states...").
-4. Confidence must reflect evidence strength:
-   - 0.0 = no relevant evidence
-   - 0.1–0.3 = weak or indirect evidence
-   - 0.4–0.6 = moderate evidence, single source
-   - 0.7–0.8 = strong evidence from multiple sources
-   - 0.9–1.0 = overwhelming, unambiguous evidence from multiple independent sources
-5. NEVER assign confidence > 0.7 based on a single source.
-6. NEVER assign confidence > 0.5 if the evidence only partially addresses the claim.
-7. When in doubt between any classification and "insufficient", ALWAYS choose "insufficient".
+4. Your reasoning must explicitly address source quality and independence.
+5. You MUST classify the stance (supporting/contradicting/neutral) for EVERY source.
+6. NEVER assign verdictScore > 70 based on a single source, regardless of quality.
+7. NEVER assign verdictScore > 50 if evidence only partially addresses the claim.
+8. REDUCE verdictScore if sources appear to share the same underlying data.
+9. When in doubt, use a lower score rather than a higher one.
 
 Return ONLY valid JSON:
-{"classification": "supported"|"refuted"|"conflicting"|"insufficient", "confidence": 0.0, "reasoning": "Which sources say what, and why this leads to your verdict"}
+{"classification": "supported"|"refuted"|"conflicting"|"insufficient", "verdictScore": 0-100|null, "supporting": 0, "contradicting": 0, "neutral": 0, "sourceStances": [{"sourceNumber": 1, "stance": "supporting"|"contradicting"|"neutral"}], "reasoning": "Your detailed analysis referencing specific sources, their quality, independence, and how they relate to the precise claim."}
 No prose outside the JSON.`;
+
+const SourceStanceSchema = z.object({
+  sourceNumber: z.number(),
+  stance: z.enum(["supporting", "contradicting", "neutral"]),
+});
 
 const ClassificationSchema = z.object({
   classification: z.enum(["supported", "refuted", "conflicting", "insufficient"]),
-  confidence: z.number().min(0).max(1),
+  verdictScore: z.number().min(0).max(100).nullable(),
+  supporting: z.number().min(0),
+  contradicting: z.number().min(0),
+  neutral: z.number().min(0),
+  sourceStances: z.array(SourceStanceSchema).optional(),
   reasoning: z.string(),
 });
+
+export interface EvidenceBreakdown {
+  supporting: number;
+  contradicting: number;
+  neutral: number;
+}
 
 export interface ClassificationResult {
   status: ClaimStatus;
   confidence: number;
+  verdictScore: number;
   llmClassification: LLMClassification;
   reasoning: string;
+  evidenceBreakdown: EvidenceBreakdown;
+  sourceStances: Array<{ sourceNumber: number; stance: "supporting" | "contradicting" | "neutral" }>;
 }
 
 function formatEvidenceContext(evidence: RetrievedEvidence[]): string {
   if (evidence.length === 0) {
-    return "NO EVIDENCE RETRIEVED. You MUST return insufficient with confidence 0.";
+    return "NO EVIDENCE RETRIEVED. You MUST return insufficient with verdictScore null and all stance counts at 0.";
   }
 
   return evidence
@@ -101,33 +133,48 @@ function formatEvidenceContext(evidence: RetrievedEvidence[]): string {
     .join("\n\n");
 }
 
+/**
+ * Convert verdict score (0-100) to the legacy ClaimStatus for backward compat.
+ */
+function verdictScoreToStatus(score: number | null): ClaimStatus {
+  if (score === null) return "insufficient";
+  if (score >= 60) return "supported";
+  if (score >= 30) return "mixed";
+  return "unsupported";
+}
+
+/**
+ * Convert verdict score to a legacy confidence value (0-1) for backward compat.
+ */
+function verdictScoreToConfidence(score: number | null): number {
+  if (score === null) return 0;
+  return Math.round(score) / 100;
+}
+
 export async function classifyClaim(
   claim: string,
   evidence: RetrievedEvidence[] = []
 ): Promise<ClassificationResult> {
-  const evidenceContext = formatEvidenceContext(evidence);
-  const userMessage = `Claim: "${claim}"\n\nEvidence:\n${evidenceContext}`;
-
-  const raw = await callLLM(SYSTEM_PROMPT, userMessage);
-  const parsed = ClassificationSchema.parse(raw);
-  const llmClassification = parsed.classification;
-  const status = LLM_CLASSIFICATION_MAP[llmClassification];
-
-  // Hard safety net: if no evidence was provided, FORCE insufficient regardless of LLM output
+  // Skip LLM call entirely when there's no evidence — saves cost and latency
   if (evidence.length === 0) {
     return {
       status: "insufficient",
       confidence: 0,
+      verdictScore: 0,
       llmClassification: "insufficient",
       reasoning: "No web evidence was retrieved for this claim. Cannot verify without sources.",
+      evidenceBreakdown: { supporting: 0, contradicting: 0, neutral: 0 },
+      sourceStances: [],
     };
   }
 
-  // Safety net: cap confidence for single-source verdicts
-  const cappedConfidence =
-    evidence.length === 1 && parsed.confidence > 0.7
-      ? 0.7
-      : parsed.confidence;
+  const evidenceContext = formatEvidenceContext(evidence);
+  const userMessage = `Claim: "${claim}"\n\nEvidence:\n${evidenceContext}`;
+
+  // Classification is the most critical step — use the full gpt-4o model
+  const raw = await callLLM(SYSTEM_PROMPT, userMessage, "gpt-4o");
+  const parsed = ClassificationSchema.parse(raw);
+  const llmClassification = parsed.classification;
 
   // Safety net: reasoning must reference at least one source
   const mentionsSources = /source\s*\d/i.test(parsed.reasoning);
@@ -135,15 +182,38 @@ export async function classifyClaim(
     return {
       status: "insufficient",
       confidence: 0,
+      verdictScore: 0,
       llmClassification: "insufficient",
       reasoning: `Classifier failed to cite evidence. Original response: ${parsed.reasoning}`,
+      evidenceBreakdown: { supporting: 0, contradicting: 0, neutral: 0 },
+      sourceStances: [],
     };
   }
 
+  const verdictScore = parsed.verdictScore ?? 0;
+
+  // Safety net: cap score for single-source verdicts
+  const cappedScore =
+    evidence.length === 1 && verdictScore > 70
+      ? 70
+      : verdictScore;
+
+  // Derive status from the verdict score (not from the LLM classification directly)
+  // This ensures consistency between the score and the categorical label
+  const status = verdictScoreToStatus(parsed.verdictScore);
+  const confidence = verdictScoreToConfidence(cappedScore);
+
   return {
     status,
-    confidence: cappedConfidence,
+    confidence,
+    verdictScore: cappedScore,
     llmClassification,
     reasoning: parsed.reasoning,
+    evidenceBreakdown: {
+      supporting: parsed.supporting,
+      contradicting: parsed.contradicting,
+      neutral: parsed.neutral,
+    },
+    sourceStances: parsed.sourceStances ?? [],
   };
 }

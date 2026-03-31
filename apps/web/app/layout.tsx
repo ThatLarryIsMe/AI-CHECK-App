@@ -42,6 +42,8 @@ export default async function RootLayout({
             navUser
               ? {
                   role: navUser.role,
+                                  plan: navUser.plan,
+                                  planStatus: navUser.planStatus,
                 }
               : null
           }
